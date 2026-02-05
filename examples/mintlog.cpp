@@ -22,8 +22,9 @@ int main() {
   log::fatal("Critical error in the \"", "network", "\" module");
 
   log::clear("app.log"); // completely optional
-  log::log_path = "app.log";  // may also set to `stdout` (default) or `stderr`
+  log::path = "app.log";  // may also set to `stdout` (default) or `stderr`
 
+  log::timestamps = true;
   log::time_fmt = "%d.%m %H:%M:%S"; // custom timestamp format
   log::info("Configuration loaded");
 }

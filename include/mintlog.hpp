@@ -8,7 +8,7 @@ namespace log {
   enum class Level { DEBUG, INFO, WARNING, ERROR, FATAL };
 
   // Configuration is not shared between files
-  inline std::string log_path = "stdout"; // "stdout" and "stderr" have colors
+  inline std::string path = "stdout"; // "stdout" and "stderr" have colors
   inline std::string time_fmt = "%d-%m-%Y %H:%M:%S";
   inline Level level = Level::WARNING;
   inline bool timestamps = true;
@@ -59,14 +59,14 @@ namespace log {
     stream << color_start << level_to_string(lvl) << color_end << " | "; // level
     ((stream << std::forward<Args>(args)), ...);                         // message
 
-    if (log_path == "stdout") std::cout << stream.str() << '\n';
-    else if (log_path == "stderr") std::cerr << stream.str() << '\n';
+    if (path == "stdout") std::cout << stream.str() << '\n';
+    else if (path == "stderr") std::cerr << stream.str() << '\n';
     else {
-      std::ofstream file(log_path, std::ios::app);
+      std::ofstream file(path, std::ios::app);
       if (file.is_open()) {
         file << stream.str() << '\n';
       } else {
-        std::cerr << "Failed to open log file: " << log_path;
+        std::cerr << "Failed to open log file: " << path;
       }
     }
   }
