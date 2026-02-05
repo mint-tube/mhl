@@ -65,8 +65,8 @@ namespace log {
     if (show_time) stream << get_timestr() << " | ";
     // level     - colored if writing to `stdout` or `stderr`
     stream << color_start << std::string(level_to_string(lvl)) << color_end << " | ";
-    // message   - append arguments one-by-one
-    ([&](auto&& arg) { stream << arg; }(std::forward<Args>(args)), ...);
+    // message   - append arguments with a fold expression
+    (stream << std::forward<Args>(args), ...);
 
     if (log_path == "stdout") std::cout << stream.str() << '\n';
     else if (log_path == "stderr") std::cerr << stream.str() << '\n';
