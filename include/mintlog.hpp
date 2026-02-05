@@ -5,12 +5,12 @@
 #include <iostream>
 
 namespace log {
-  enum class Level { DEBUG, INFO, WARNING, ERROR, FATAL };
+  enum class Level { Debug, Info, Warning, Error, Fatal };
 
   // Configuration is not shared between files
   inline std::string path = "stdout"; // "stdout" and "stderr" have colors
   inline std::string time_fmt = "%d-%m-%Y %H:%M:%S";
-  inline Level level = Level::WARNING;
+  inline Level level = Level::Warning;
   inline bool timestamps = true;
   inline bool muted = false;
 
@@ -18,21 +18,21 @@ namespace log {
 
   inline const std::string level_to_string(Level lvl) {
     switch (lvl) {
-      case Level::DEBUG:   return "DEBUG  ";
-      case Level::INFO:    return "INFO   ";
-      case Level::WARNING: return "WARNING";
-      case Level::ERROR:   return "ERROR  ";
-      case Level::FATAL:   return "FATAL  ";
+      case Level::Debug:   return "DEBUG  ";
+      case Level::Info:    return "INFO   ";
+      case Level::Warning: return "WARNING";
+      case Level::Error:   return "ERROR  ";
+      case Level::Fatal:   return "FATAL  ";
       default:             return "UNKNOWN";
     }
   }
   inline const std::string level_to_color(Level lvl) {
     switch (lvl) {
-      case Level::DEBUG:   return "\x1b[36m";
-      case Level::INFO:    return "\x1b[32m";
-      case Level::WARNING: return "\x1b[33m";
-      case Level::ERROR:   return "\x1b[31m";
-      case Level::FATAL:   return "\x1b[1;31m";
+      case Level::Debug:   return "\x1b[36m";
+      case Level::Info:    return "\x1b[32m";
+      case Level::Warning: return "\x1b[33m";
+      case Level::Error:   return "\x1b[31m";
+      case Level::Fatal:   return "\x1b[1;31m";
       default:             return "";
     }
   }
@@ -72,15 +72,15 @@ namespace log {
   }
 
   template<typename... Args>
-  void debug(Args&&... args) { write(Level::DEBUG, std::forward<Args>(args)...); }
+  void debug(Args&&... args) { write(Level::Debug, std::forward<Args>(args)...); }
   template<typename... Args>
-  void info(Args&&... args) { write(Level::INFO, std::forward<Args>(args)...); }
+  void info(Args&&... args) { write(Level::Info, std::forward<Args>(args)...); }
   template<typename... Args>
-  void warning(Args&&... args) { write(Level::WARNING, std::forward<Args>(args)...); }
+  void warning(Args&&... args) { write(Level::Warning, std::forward<Args>(args)...); }
   template<typename... Args>
-  void error(Args&&... args) { write(Level::ERROR, std::forward<Args>(args)...); }
+  void error(Args&&... args) { write(Level::Error, std::forward<Args>(args)...); }
   template<typename... Args>
-  void fatal(Args&&... args) { write(Level::FATAL, std::forward<Args>(args)...); }
+  void fatal(Args&&... args) { write(Level::Fatal, std::forward<Args>(args)...); }
 }
 
 /*
