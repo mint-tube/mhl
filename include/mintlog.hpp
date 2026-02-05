@@ -5,39 +5,35 @@
 #include <iostream>
 
 namespace log {
-  constexpr int debug = 1;
-  constexpr int info = 2;
-  constexpr int warning = 3;
-  constexpr int error = 4;
-  constexpr int fatal = 5;
+  enum class Level { DEBUG, INFO, WARNING, ERROR, FATAL };
 
   // Configuration is not shared between files
   inline std::string log_path = "stdout"; // "stdout" and "stderr" enable colored output
   inline std::string time_fmt = "%d-%m-%Y %H:%M:%S"; // time will be written in this format
-  inline int level = warning;   // level threshold
+  inline Level level = Level::WARNING;   // level threshold
   inline bool show_time = true; // `false` to turn off timestamps
   inline bool muted = false;    // `true` to temporary turn off logging
 
   inline void clear_file(const std::string& path) { std::remove(path.c_str()); }
 
-  inline const std::string_view level_to_string(int lvl) {
+  inline const std::string_view level_to_string(Level lvl) {
     switch (lvl) {
-      case debug:   return "DEBUG  ";
-      case info:    return "INFO   ";
-      case warning: return "WARNING";
-      case error:   return "ERROR  ";
-      case fatal:   return "FATAL  ";
-      default:      return "UNKNOWN";
+      case Level::DEBUG:   return "DEBUG  ";
+      case Level::INFO:    return "INFO   ";
+      case Level::WARNING: return "WARNING";
+      case Level::ERROR:   return "ERROR  ";
+      case Level::FATAL:   return "FATAL  ";
+      default:             return "UNKNOWN";
     }
   }
-  inline const std::string_view level_to_color(int lvl) {
+  inline const std::string_view level_to_color(Level lvl) {
     switch (lvl) {
-      case debug: return "\x1b[36m";
-      case info: return "\x1b[32m";
-      case warning: return "\x1b[33m";
-      case error: return "\x1b[31m";
-      case fatal: return "\x1b[1;31m";
-      default: return "";
+      case Level::DEBUG:   return "\x1b[36m";
+      case Level::INFO:    return "\x1b[32m";
+      case Level::WARNING: return "\x1b[33m";
+      case Level::ERROR:   return "\x1b[31m";
+      case Level::FATAL:   return "\x1b[1;31m";
+      default:             return "";
     }
   }
 
@@ -51,7 +47,7 @@ namespace log {
   }
 
   template<typename... Args>
-  void log(int lvl, Args&&... args) {
+  void write(Level lvl, Args&&... args) {
     if (lvl < level || muted) return;
 
     std::string color_start, color_end;
@@ -66,7 +62,7 @@ namespace log {
     // level     - colored if writing to `stdout` or `stderr`
     stream << color_start << std::string(level_to_string(lvl)) << color_end << " | ";
     // message   - append arguments with a fold expression
-    (stream << std::forward<Args>(args), ...);
+    ((stream << std::forward<Args>(args)), ...);
 
     if (log_path == "stdout") std::cout << stream.str() << '\n';
     else if (log_path == "stderr") std::cerr << stream.str() << '\n';
@@ -79,6 +75,17 @@ namespace log {
       }
     }
   }
+
+  template<typename... Args>
+  void debug(Args&&... args) { write(Level::DEBUG, std::forward<Args>(args)...); }
+  template<typename... Args>
+  void info(Args&&... args) { write(Level::INFO, std::forward<Args>(args)...); }
+  template<typename... Args>
+  void warning(Args&&... args) { write(Level::WARNING, std::forward<Args>(args)...); }
+  template<typename... Args>
+  void error(Args&&... args) { write(Level::ERROR, std::forward<Args>(args)...); }
+  template<typename... Args>
+  void fatal(Args&&... args) { write(Level::FATAL, std::forward<Args>(args)...); }
 }
 
 /*
