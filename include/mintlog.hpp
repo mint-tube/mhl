@@ -1,6 +1,6 @@
 #pragma once
 #include <chrono>
-#include <format>
+#include <sstream>
 #include <fstream>
 #include <iostream>
 
@@ -22,12 +22,12 @@ namespace log {
 
   inline const std::string_view level_to_string(int lvl) {
     switch (lvl) {
-      case debug: return "DEBUG";
-      case info: return "INFO";
+      case debug:   return "DEBUG  ";
+      case info:    return "INFO   ";
       case warning: return "WARNING";
-      case error: return "ERROR";
-      case fatal: return "FATAL";
-      default: return "UNKNOWN";
+      case error:   return "ERROR  ";
+      case fatal:   return "FATAL  ";
+      default:      return "UNKNOWN";
     }
   }
   inline const std::string_view level_to_color(int lvl) {
@@ -51,33 +51,29 @@ namespace log {
   }
 
   template<typename... Args>
-  void log(int lvl, std::string_view fmt, Args&&... args) {
+  void log(int lvl, Args&&... args) {
     if (lvl < level || muted) return;
-
-    std::string message;
-    try {
-      message = std::vformat(fmt, std::make_format_args(std::forward<Args>(args)...));
-    } catch (const std::format_error& e) {
-      message = std::string(fmt) + "Format error: " + e.what();
-    }
 
     std::string color_start, color_end;
     if (log_path == "stdout" || log_path == "stderr") {
-      color_start = level_to_color(lvl);
+      color_start = std::string(level_to_color(lvl));
       color_end = "\x1b[00m";
     }
 
-    std::string line = std::format("{}{:<7}{} | {}\n",
-      color_start, level_to_string(lvl), color_end, message);
+    std::ostringstream stream;
+    // timestamp - disabled if `show_time` set to `false`
+    if (show_time) stream << get_timestr() << " | ";
+    // level     - colored if writing to `stdout` or `stderr`
+    stream << color_start << std::string(level_to_string(lvl)) << color_end << " | ";
+    // message   - append arguments one-by-one
+    ([&](auto&& arg) { stream << arg; }(std::forward<Args>(args)), ...);
 
-    if (show_time) line = get_timestr() + " | " + line;
-
-    if (log_path == "stdout") std::cout << line;
-    else if (log_path == "stderr") std::cerr << line;
+    if (log_path == "stdout") std::cout << stream.str() << '\n';
+    else if (log_path == "stderr") std::cerr << stream.str() << '\n';
     else {
       std::ofstream file(log_path, std::ios::app);
       if (file.is_open()) {
-        file << line << "\n";
+        file << stream.str() << '\n';
       } else {
         std::cerr << "Failed to open log file: " << log_path;
       }
