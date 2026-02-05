@@ -3,7 +3,7 @@
 int main() {
   // REMEMBER - SETTINGS ARE NOT SHARED BETWEEN FILES
 
-  log::level = log::Level::DEBUG; // ignore if level is lower than `debug` (never) - `warning` by default
+  log::level = log::Level::Debug; // ignore if level is lower than `debug` (never) - `warning` by default
 
   log::info("Application started");
   log::debug("User: ", "John", ", ID: ", 42); // all arguments are concatenated
