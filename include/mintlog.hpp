@@ -8,15 +8,15 @@ namespace log {
   enum class Level { DEBUG, INFO, WARNING, ERROR, FATAL };
 
   // Configuration is not shared between files
-  inline std::string log_path = "stdout"; // "stdout" and "stderr" enable colored output
-  inline std::string time_fmt = "%d-%m-%Y %H:%M:%S"; // time will be written in this format
-  inline Level level = Level::WARNING;   // level threshold
-  inline bool show_time = true; // `false` to turn off timestamps
-  inline bool muted = false;    // `true` to temporary turn off logging
+  inline std::string log_path = "stdout"; // "stdout" and "stderr" have colors
+  inline std::string time_fmt = "%d-%m-%Y %H:%M:%S";
+  inline Level level = Level::WARNING;
+  inline bool timestamps = true;
+  inline bool muted = false;
 
-  inline void clear_file(const std::string& path) { std::remove(path.c_str()); }
+  inline void clear(const std::string& path) { std::remove(path.c_str()); }
 
-  inline const std::string_view level_to_string(Level lvl) {
+  inline const std::string level_to_string(Level lvl) {
     switch (lvl) {
       case Level::DEBUG:   return "DEBUG  ";
       case Level::INFO:    return "INFO   ";
@@ -26,7 +26,7 @@ namespace log {
       default:             return "UNKNOWN";
     }
   }
-  inline const std::string_view level_to_color(Level lvl) {
+  inline const std::string level_to_color(Level lvl) {
     switch (lvl) {
       case Level::DEBUG:   return "\x1b[36m";
       case Level::INFO:    return "\x1b[32m";
@@ -38,11 +38,11 @@ namespace log {
   }
 
   inline std::string get_timestr() {
+
     time_t time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-    tm* tm = std::localtime(&time);
 
     char buffer[64];
-    std::strftime(buffer, sizeof(buffer), time_fmt.c_str(), tm);
+    std::strftime(buffer, sizeof(buffer), time_fmt.c_str(), std::localtime(&time));
     return std::string(buffer);
   }
 
@@ -50,19 +50,14 @@ namespace log {
   void write(Level lvl, Args&&... args) {
     if (lvl < level || muted) return;
 
-    std::string color_start, color_end;
-    if (log_path == "stdout" || log_path == "stderr") {
-      color_start = std::string(level_to_color(lvl));
-      color_end = "\x1b[00m";
-    }
+    bool use_color = (path == "stdout" || path == "stderr");
+    std::string color_start = use_color ? level_to_color(lvl) : "";
+    std::string color_end = use_color ? "\x1b[00m" : "";
 
     std::ostringstream stream;
-    // timestamp - disabled if `show_time` set to `false`
-    if (show_time) stream << get_timestr() << " | ";
-    // level     - colored if writing to `stdout` or `stderr`
-    stream << color_start << std::string(level_to_string(lvl)) << color_end << " | ";
-    // message   - append arguments with a fold expression
-    ((stream << std::forward<Args>(args)), ...);
+    if (timestamps) stream << get_timestr() << " | ";                    // timestamp
+    stream << color_start << level_to_string(lvl) << color_end << " | "; // level
+    ((stream << std::forward<Args>(args)), ...);                         // message
 
     if (log_path == "stdout") std::cout << stream.str() << '\n';
     else if (log_path == "stderr") std::cerr << stream.str() << '\n';

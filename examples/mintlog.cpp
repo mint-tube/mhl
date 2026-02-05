@@ -17,10 +17,11 @@ int main() {
   log::fatal("We are doomed!!!"); // will be ignored
   log::muted = false;
 
+  log::timestamps = false; // disable timestamps
   log::warning("Suboptimal memory usage: ", 145.67, "MB");
   log::fatal("Critical error in the \"", "network", "\" module");
 
-  log::clear_file("app.log"); // completely optional
+  log::clear("app.log"); // completely optional
   log::log_path = "app.log";  // may also set to `stdout` (default) or `stderr`
 
   log::time_fmt = "%d.%m %H:%M:%S"; // custom timestamp format
