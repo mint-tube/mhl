@@ -4,7 +4,7 @@
 #include <fstream>
 #include <iostream>
 
-namespace log {
+namespace mlog {
   enum class Level { Debug, Info, Warning, Error, Fatal };
 
   // Configuration is not shared between files
@@ -47,7 +47,7 @@ namespace log {
   }
 
   template<typename... Args>
-  void write(Level lvl, Args&&... args) {
+  static void write(Level lvl, Args&&... args) {
     if (lvl < level || muted) return;
 
     bool use_color = (path == "stdout" || path == "stderr");
