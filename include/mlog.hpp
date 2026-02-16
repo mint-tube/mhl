@@ -7,7 +7,6 @@
 namespace mlog {
   enum class Level { Debug, Info, Warning, Error, Fatal };
 
-  // Configuration is not shared between files
   inline std::string path = "stdout"; // "stdout" and "stderr" have colors
   inline std::string time_fmt = "%d-%m-%Y %H:%M:%S";
   inline Level level = Level::Warning;

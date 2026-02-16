@@ -1,17 +1,14 @@
 #include "../include/mlog.hpp"
 
 int main() {
-  // REMEMBER - SETTINGS ARE NOT SHARED BETWEEN FILES
-
   mlog::level = mlog::Level::Debug; // ignore if level is lower than `debug` (never) - `warning` by default
 
   mlog::info("Application started");
   mlog::debug("User: ", "John", ", ID: ", 42); // all arguments are concatenated
 
   int error_code = 404;
-  if (error_code != 200) {
+  if (error_code != 200)
     mlog::error("Request failed: ", error_code);
-  }
 
   mlog::muted = true;
   mlog::fatal("We are doomed!!!"); // will be ignored
