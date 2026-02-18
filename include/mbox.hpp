@@ -1,5 +1,4 @@
 #pragma once
-
 #include <fstream>
 #include <cstring>
 #include <vector>
@@ -10,14 +9,14 @@
 #include <cassert>
 #include <cstdarg>
 #include <fcntl.h>
+#include <unistd.h>
 #include <sys/ioctl.h>
 #include <sys/select.h>
 #include <termios.h>
 
 namespace mbox {
   enum class Key : uint8_t {
-    CTRL_TILDE = 0x00,
-    CTRL_2 = 0x00, // clash with `CTRL_TILDE`
+    CTRL_TILDE = 0x00, CTRL_2 = 0x00,
     CTRL_A = 0x01,
     CTRL_B = 0x02,
     CTRL_C = 0x03,
@@ -25,15 +24,12 @@ namespace mbox {
     CTRL_E = 0x05,
     CTRL_F = 0x06,
     CTRL_G = 0x07,
-    BACKSPACE = 0x08,
-    CTRL_H = 0x08, // clash with `CTRL_BACKSPACE`
-    TAB = 0x09,
-    CTRL_I = 0x09, // clash with `TAB`
+    BACKSPACE = 0x08, CTRL_H = 0x08,
+    TAB = 0x09, CTRL_I = 0x09,
     CTRL_J = 0x0a,
     CTRL_K = 0x0b,
     CTRL_L = 0x0c,
-    ENTER = 0x0d,
-    CTRL_M = 0x0d, // clash with `ENTER`
+    ENTER = 0x0d, CTRL_M = 0x0d,
     CTRL_N = 0x0e,
     CTRL_O = 0x0f,
     CTRL_P = 0x10,
@@ -47,20 +43,13 @@ namespace mbox {
     CTRL_X = 0x18,
     CTRL_Y = 0x19,
     CTRL_Z = 0x1a,
-    ESC = 0x1b,
-    CTRL_LSQ_BRACKET = 0x1b, // clash with 'ESC'
-    CTRL_3 = 0x1b, // clash with 'ESC'
-    CTRL_4 = 0x1c,
-    CTRL_BACKSLASH = 0x1c, // clash with 'CTRL_4'
-    CTRL_5 = 0x1d,
-    CTRL_RSQ_BRACKET = 0x1d, // clash with 'CTRL_5'
+    ESC = 0x1b, CTRL_LSQ_BRACKET = 0x1b, CTRL_3 = 0x1b,
+    CTRL_4 = 0x1c, CTRL_BACKSLASH = 0x1c,
+    CTRL_5 = 0x1d, CTRL_RSQ_BRACKET = 0x1d,
     CTRL_6 = 0x1e,
-    CTRL_7 = 0x1f,
-    CTRL_SLASH = 0x1f, // clash with 'CTRL_7'
-    CTRL_UNDERSCORE = 0x1f, // clash with 'CTRL_7'
+    CTRL_7 = 0x1f, CTRL_SLASH = 0x1f, CTRL_UNDERSCORE = 0x1f,
     SPACE = 0x20,
-    BACKSPACE2 = 0x7f,
-    CTRL_8 = 0x7f, // clash with 'BACKSPACE2'
+    BACKSPACE2 = 0x7f, CTRL_8 = 0x7f,
     F1 = (0xff - 0),
     F2 = (0xff - 1),
     F3 = (0xff - 2),
@@ -88,14 +77,7 @@ namespace mbox {
   constexpr inline Key to_key(uint8_t i) { return static_cast<Key>(i); }
   constexpr inline uint8_t from_key(Key i) { return static_cast<uint8_t>(i); }
 
-  enum class Button : uint8_t {
-    RELEASE = 0,
-    LEFT = 1,
-    RIGHT = 2,
-    MIDDLE = 3,
-    WHEEL_UP = 4,
-    WHEEL_DOWN = 5
-  };
+  enum class Button { RELEASE, LEFT, RIGHT, MIDDLE, WHEEL_UP, WHEEL_DOWN };
 
   enum class Style : uint16_t {
     DEFAULT = 0x0000,
@@ -113,21 +95,17 @@ namespace mbox {
     REVERSE = 0x0400,
     ITALIC = 0x0800,
     BLINK = 0x1000,
-    HI_BLACK = 0x2000,
+    BLACK256 = 0x2000,
     BRIGHT = 0x4000,
     DIM = 0x8000
   };
-  constexpr inline Style toStyle(uint16_t i) { return static_cast<Style>(i); }
-  constexpr inline uint16_t fromStyle(Style i) { return static_cast<uint16_t>(i); }
-  inline Style operator|(Style left, Style right) { return toStyle(fromStyle(left) | fromStyle(right)); }
-  inline Style operator&(Style left, Style right) { return toStyle(fromStyle(left) & fromStyle(right)); }
-  inline Style operator~(Style right) { return toStyle(~fromStyle(right)); }
+  constexpr inline Style to_style(uint16_t i) { return static_cast<Style>(i); }
+  constexpr inline uint16_t from_style(Style i) { return static_cast<uint16_t>(i); }
+  inline Style operator|(Style left, Style right) { return to_style(from_style(left) | from_style(right)); }
+  inline Style operator&(Style left, Style right) { return to_style(from_style(left) & from_style(right)); }
+  inline Style operator~(Style right) { return to_style(~from_style(right)); }
 
-  enum class EventType : uint16_t {
-    KEY = 1,
-    RESIZE = 2,
-    MOUSE = 3
-  };
+  enum class EventType { KEY, RESIZE, MOUSE };
 
   namespace Cap {
     constexpr uint8_t F1 = 0;
@@ -204,13 +182,7 @@ namespace mbox {
     return static_cast<InputMode>(static_cast<uint8_t>(left) & static_cast<uint8_t>(right));
   }
 
-  enum class OutputMode : uint8_t { // numeric
-    CURRENT = 0,
-    NORMAL = 1,
-    COLOR256 = 2,
-    COLOR216 = 3,
-    GRAYSCALE = 4,
-  };
+  enum class OutputMode : uint8_t { CURRENT, NORMAL, COLOR256, COLOR216, GRAYSCALE, };
 
   /* A cell in a 2d grid representing the terminal screen.
    *
@@ -268,11 +240,11 @@ namespace mbox {
     int32_t y;
   };
 
-  /* Initialize the library. This function should be called before any
-   * other functions. `init` is equivalent to `init_file("/dev/tty")`. After
-   * successful initialization, the library must be finalized using `shutdown`. */
+  /* Initialize the library. This function should be called before any other functions.
+   * After successful initialization, the library must be finalized using `shutdown`.
+   * @throws `std::runtime_error` - failed to initialize*/
   void init();
-  void init_file(const char* path);
+  /* Finalize the work and switch the terminal back to it's normal state. */
   void shutdown();
 
   /* Return the size of the back buffer (which is the same as terminal's
@@ -322,29 +294,25 @@ namespace mbox {
    *      `Style::BOLD`, `Style::UNDERLINE`, `Style::REVERSE`, `Style::ITALIC`,
    *      `Style::BLINK`, `Style::BRIGHT`, `Style::DIM`
    *
-   * 2. `OutputMode::256`
+   * 2. `OutputMode::COLOR256`
    *    Provides 256 colors (plus default):
    *          0x00:               `Style::DEFAULT`
-   *          `Style::HI_BLACK`:  black // TODO: 256_BLACK?
+   *          `Style::BLACK256`:  black
    *          0x01..0x07:         next 7 colors from `OutputMode::NORMAL`
    *          0x08..0x0f:         bright versions of the above
    *          0x10..0xe7:         216 different colors
    *          0xe8..0xff:         24 different shades of gray
+   *    Which may be |'d with all the attributes except `Style::BRIGHT`.
+   *    `Style::BLACK256` must be used for black, as 0x00 represents default.
+   *    Use `to_style()` to make a proper style.
    *
-   *    All `Style::*` style attributes except `Style::BRIGHT` may be |`d.
-   *    Note `Style::HI_BLACK` must be used for black, as 0x00 represents default.
-   *    Use `toStyle()` to make a proper style.
-   *
-   * 3. `OutputMode::216`
-   *    This mode supports the 216-color range of `OutputMode::256` only, but you
-   *    don't need to provide an offset:
+   * 3. `OutputMode::COLOR216`
+   *    This mode only supports the 216-color range of `OutputMode::256`:
    *          0x00:              `Style::DEFAULT`
    *          0x01..0xd8:        216 colors
    *
    * 4. `OutputMode::GRAYSCALE`
-   *
-   *    This mode supports the 24-color range of `OutputMode::256` only, but you
-   *    don't need to provide an offset:
+   *    This mode only supports the 24-color range of `OutputMode::256`t:
    *          0x00:              `Style::DEFAULT`
    *          0x01..0x18:        24 shades of gray
    *
@@ -1130,7 +1098,7 @@ namespace mbox {
   struct {
     char32_t range_start;
     char32_t range_end;
-    int width; // -1 means iswprint==0, otherwise wcwidth value (0, 1, or 2)
+    int width; // -1 if non-printable
   } wcwidth_table[] = {
       // clang-format off
       {0x000001, 0x00001f, -1}, {0x000020, 0x00007e,  1}, {0x00007f, 0x00009f, -1},
@@ -1898,7 +1866,10 @@ namespace mbox {
   cellbuf::cellbuf(uint16_t width, uint16_t height) : width(width), height(height) {
     cells.resize(height * width);
   }
-  cell& cellbuf::at(uint16_t x, uint16_t y) { return this->cells[y * width + x]; }
+  cell& cellbuf::at(uint16_t x, uint16_t y) {
+    assert(in_bounds(x, y));
+    return this->cells[y * width + x];
+  }
   bool cellbuf::in_bounds(uint16_t x, uint16_t y) {
     return !(x >= this->width || y >= this->height);
   }
@@ -2028,17 +1999,19 @@ namespace mbox {
   static int16_t get_terminfo_int16(size_t offset) {
     if (offset + sizeof(int16_t) > global.terminfo.size())
       throw std::range_error("Terminfo index out of bounds");
-    return std::stoi(global.terminfo.substr(offset, 2));
+    int16_t value;
+    std::memcpy(&value, global.terminfo.c_str() + offset, sizeof(int16_t));
+    return le16toh(value); // BE in 2026?
   }
-  static const char* get_terminfo_string(size_t pos1, int16_t sz1, size_t pos2, int16_t sz2, int16_t index) {
+  static const char* get_terminfo_string(size_t p1, int16_t sz1, size_t p2, int16_t sz2, int16_t index) {
     if (index >= sz1) return ""; // as in `read_entry.c`
 
-    size_t table_offset_offset = pos1 + (index * sizeof(int16_t));
+    size_t table_offset_offset = p1 + (index * sizeof(int16_t));
     int16_t table_offset = get_terminfo_int16(table_offset_offset);
 
     if (table_offset < 0 || table_offset >= sz2) return ""; // as in `read_entry.c`
 
-    size_t str_offset = static_cast<size_t>(pos2) + (int)table_offset;
+    size_t str_offset = static_cast<size_t>(p2) + (int)table_offset;
     if (str_offset >= global.terminfo.size())
       throw std::runtime_error("Failed to load some caps from terminfo");
 
@@ -2228,6 +2201,7 @@ namespace mbox {
     b->clear();
   }
 
+  // TODO: this is also a bytebuf method
   #define send_literal(a) bytebuf_nputs(&global.out, (a), sizeof(a) - 1)
   #define send_num(nbuf, n) bytebuf_nputs(&global.out, (nbuf), convert_num((n), (nbuf)))
   static void send_sgr(char32_t cfg, char32_t cbg, int fg_is_default, int bg_is_default) {
@@ -2240,13 +2214,9 @@ namespace mbox {
         send_literal("\x1b[");
         if (!fg_is_default) {
           send_num(nbuf, cfg);
-          if (!bg_is_default) {
-            send_literal(";");
-          }
+          if (!bg_is_default) send_literal(";");
         }
-        if (!bg_is_default) {
-          send_num(nbuf, cbg);
-        }
+        if (!bg_is_default) send_num(nbuf, cbg);
         send_literal("m");
         break;
 
@@ -2257,9 +2227,7 @@ namespace mbox {
         if (!fg_is_default) {
           send_literal("38;5;");
           send_num(nbuf, cfg);
-          if (!bg_is_default) {
-            send_literal(";");
-          }
+          if (!bg_is_default) send_literal(";");
         }
         if (!bg_is_default) {
           send_literal("48;5;");
@@ -2282,20 +2250,20 @@ namespace mbox {
           // from black. Black is represented by a 30, 40, 90, or 100 for fg,
           // bg, bright fg, or bright bg respectively. Red is 31, 41, 91,
           // 101, etc.
-        cfg = (fromStyle(fg & Style::BRIGHT) ? 90 : 30) + fromStyle(fg & toStyle(0x0f)) - 1;
-        cbg = (fromStyle(bg & Style::BRIGHT) ? 100 : 40) + fromStyle(bg & toStyle(0x0f)) - 1;
+        cfg = (from_style(fg & Style::BRIGHT) ? 90 : 30) + from_style(fg & to_style(0x0f)) - 1;
+        cbg = (from_style(bg & Style::BRIGHT) ? 100 : 40) + from_style(bg & to_style(0x0f)) - 1;
         break;
 
       case OutputMode::COLOR256:
-        cfg = fromStyle(fg & toStyle(0xff));
-        cbg = fromStyle(bg & toStyle(0xff));
-        if (fromStyle(fg & Style::HI_BLACK)) cfg = 0;
-        if (fromStyle(bg & Style::HI_BLACK)) cbg = 0;
+        cfg = from_style(fg & to_style(0xff));
+        cbg = from_style(bg & to_style(0xff));
+        if (from_style(fg & Style::BLACK256)) cfg = 0;
+        if (from_style(bg & Style::BLACK256)) cbg = 0;
         break;
 
       case OutputMode::COLOR216:
-        cfg = fromStyle(fg & toStyle(0xff));
-        cbg = fromStyle(bg & toStyle(0xff));
+        cfg = from_style(fg & to_style(0xff));
+        cbg = from_style(bg & to_style(0xff));
         if (cfg > 216) cfg = 216;
         if (cbg > 216) cbg = 216;
         cfg += 0x0f;
@@ -2303,8 +2271,8 @@ namespace mbox {
         break;
 
       case OutputMode::GRAYSCALE:
-        cfg = fromStyle(fg & toStyle(0xff));
-        cbg = fromStyle(bg & toStyle(0xff));
+        cfg = from_style(fg & to_style(0xff));
+        cbg = from_style(bg & to_style(0xff));
         if (cfg > 24) cfg = 24;
         if (cbg > 24) cbg = 24;
         cfg += 0xe7;
@@ -2312,30 +2280,27 @@ namespace mbox {
         break;
     }
 
-    if (fromStyle(fg & Style::BOLD))
+    if (from_style(fg & Style::BOLD))
       bytebuf_puts(&global.out, global.caps[Cap::BOLD]);
-    if (fromStyle(fg & Style::BLINK))
+    if (from_style(fg & Style::BLINK))
       bytebuf_puts(&global.out, global.caps[Cap::BLINK]);
-    if (fromStyle(fg & Style::UNDERLINE))
+    if (from_style(fg & Style::UNDERLINE))
       bytebuf_puts(&global.out, global.caps[Cap::UNDERLINE]);
-    if (fromStyle(fg & Style::ITALIC))
+    if (from_style(fg & Style::ITALIC))
       bytebuf_puts(&global.out, global.caps[Cap::ITALIC]);
-    if (fromStyle(fg & Style::DIM))
+    if (from_style(fg & Style::DIM))
       bytebuf_puts(&global.out, global.caps[Cap::DIM]);
-    if (fromStyle(((fg & Style::REVERSE) | (bg & Style::REVERSE))))
+    if (from_style(((fg & Style::REVERSE) | (bg & Style::REVERSE))))
       bytebuf_puts(&global.out, global.caps[Cap::REVERSE]);
 
-    bool fg_is_default = 1, bg_is_default = 1;
+    bool fg_is_default = !(from_style(fg) & 0xff);
+    bool bg_is_default = !(from_style(bg) & 0xff);
     if (global.output_mode == OutputMode::COLOR256) {
-      fg_is_default = fromStyle(fg & Style::HI_BLACK);
-      bg_is_default = fromStyle(bg & Style::HI_BLACK);
-    } else {
-      fg_is_default = fromStyle(fg & toStyle(0xff)) == 0;
-      bg_is_default = fromStyle(bg & toStyle(0xff)) == 0;
+      fg_is_default = !from_style(fg & Style::BLACK256);
+      bg_is_default = !from_style(bg & Style::BLACK256);
     }
 
     send_sgr(cfg, cbg, fg_is_default, bg_is_default);
-
     global.last_fg = fg;
     global.last_bg = bg;
   }
@@ -2419,7 +2384,7 @@ namespace mbox {
   static void handle_resize(int sig) {
     int errno_copy = errno;
     write(global.resize_pipefd[1], &sig, sizeof(sig));
-    errno = errno_copy;
+    errno = errno_copy; // we don't really care if write() failed
   }
 
   void set_cursor(uint16_t cx, uint16_t cy) {
@@ -2649,13 +2614,15 @@ namespace mbox {
     bytebuf_puts(&global.out, global.caps[Cap::HIDE_CURSOR]);
   }
 
-  void init_file(const char* path) {
-    int ttyfd = open(path, O_RDWR);
+  void init() {
+    if (global.ttyfd_open) return; // already initialized
+
+    int ttyfd = open("/dev/tty", O_RDWR);
     if (ttyfd < 0) {
       shutdown();
-      throw std::runtime_error("Failed to open " + std::string(path));
+      throw std::runtime_error("Failed to open /dev/tty");
     }
-    global.ttyfd_open = 1;
+    global.ttyfd_open = true;
     global.ttyfd = ttyfd;
 
     try {
@@ -2673,9 +2640,6 @@ namespace mbox {
       shutdown();
       throw e;
     }
-  }
-  void init() {
-    init_file("/dev/tty");
   }
 
   static bool extract_esc_cap(event* event) {

@@ -11,7 +11,7 @@ int main() {
   }
 
   mbox::printf(0, y++, mbox::Style::DEFAULT, mbox::Style::DEFAULT,
-    "привет from termbox!"); // full support for non-ASCII characters
+    "привет from mbox!"); // full support for non-ASCII characters
   mbox::printf(0, y++, mbox::Style::DEFAULT, mbox::Style::DEFAULT,
     "width=%d height=%d", mbox::width(), mbox::height()); // string formatting as in std::printf()
   mbox::printf(0, y++,
@@ -20,7 +20,7 @@ int main() {
   mbox::flush(); // flush the buffer manually
   y++;
 
-  mbox::set_input_mode(mbox::InputMode::MOUSE); // optional support of mouse input
+  mbox::set_input_mode(mbox::InputMode::MOUSE); // opt-in for mouse input
   while (ev.key != mbox::Key::ESC) {
     if (y >= mbox::height()) {
       mbox::clear();

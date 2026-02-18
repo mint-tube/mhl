@@ -19,7 +19,7 @@ int main() {
   mlog::fatal("Critical error in the \"", "network", "\" module");
 
   mlog::clear("app.log"); // completely optional
-  mlog::path = "app.log";  // may also set to `stdout` (default) or `stderr`
+  mlog::path = "app.log"; // may also set to `stdout` (default) or `stderr`
 
   mlog::timestamps = true;
   mlog::time_fmt = "%d.%m %H:%M:%S"; // custom timestamp format
