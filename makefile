@@ -8,8 +8,8 @@ EXES = $(addprefix .build/ , $(NAMES))
 $(shell mkdir -p .build)
 
 help:
-	$(info Select a lib to compile the example for:)
-	$(info - 'all' ${NAMES})
+	$(info Select a lib to run the example for:)
+	$(info - ${NAMES})
 
 all: $(NAMES)
 

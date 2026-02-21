@@ -1,49 +1,53 @@
 #include "../include/mbox.hpp"
 
 int main() {
-  mbox::event ev;
-  size_t y = 0;
+  {
+    mbox::term term;
+    size_t y = 0;
 
-  try {
-    mbox::init();
-  } catch (std::runtime_error const& e) { // deinitializes automatically on exceptions
-    printf("Failed to initialize: %s", e.what()); // informative exceptions
-  }
+    term.printf(0, y++, Style::DEFAULT, Style::DEFAULT,
+      "привет from mbox!"); // full support of Unicode
+    term.printf(0, y++, Style::DEFAULT, Style::DEFAULT,
+      "width=%d height=%d", term.get_width(), term.get_height()); // string formatting as in std::printf()
+    term.printf(0, y++, Style::BLUE | Style::BRIGHT, Style::DEFAULT, // attributes can be combined
+      "버튼을 <ESC> to quit");
+    term.flush(); // decide when to flush the buffer manually
+    y++;
 
-  mbox::printf(0, y++, mbox::Style::DEFAULT, mbox::Style::DEFAULT,
-    "привет from mbox!"); // full support for non-ASCII characters
-  mbox::printf(0, y++, mbox::Style::DEFAULT, mbox::Style::DEFAULT,
-    "width=%d height=%d", mbox::width(), mbox::height()); // string formatting as in std::printf()
-  mbox::printf(0, y++,
-    mbox::Style::BLUE | mbox::Style::BRIGHT, mbox::Style::DEFAULT, // attributes can be combined
-    "버튼을 <ESC> to quit");
-  mbox::flush(); // flush the buffer manually
-  y++;
+    term.set_input_mode(InputMode::MOUSE); // opt-in for mouse input
 
-  mbox::set_input_mode(mbox::InputMode::MOUSE); // opt-in for mouse input
-  while (ev.key != mbox::Key::ESC) {
-    if (y >= mbox::height()) {
-      mbox::clear();
-      y = 0;
-    };
-    mbox::poll_event(&ev);
-    switch (ev.type) {
-      case mbox::EventType::KEY:
-        mbox::printf(0, y++, mbox::Style::YELLOW, mbox::Style::DEFAULT,
-          "KEY:    mod=%d key=%d char=%c", ev.mod, ev.key, ev.ch);
-        break;
-      case mbox::EventType::RESIZE:
-        mbox::printf(0, y++, mbox::Style::CYAN | mbox::Style::BRIGHT, mbox::Style::DEFAULT,
-          "RESIZE: width=%d height=%d", ev.width, ev.height);
-        break;
-      case mbox::EventType::MOUSE:
-        mbox::printf(0, y++, mbox::Style::GREEN, mbox::Style::DEFAULT,
-          "MOUSE:  button=%d x=%d y=%d", ev.button, ev.x, ev.y);
-        break;
+    mbox::event ev;
+    while (ev.key != Key::ESC) {
+      if (y >= term.get_height()) {
+        term.clear();
+        y = 0;
+      };
+
+      ev = term.peek_event(30 * 1000); // poll for 30 seconds
+      switch (ev.type) {
+        case EventType::KEY:    // process each keystroke individually
+          term.printf(0, y++, Style::YELLOW, Style::DEFAULT,
+            "KEY:    mod=%d key=%d char=%c", ev.mod, ev.key, ev.ch);
+          break;
+        case EventType::RESIZE: // react to resizing
+          term.printf(0, y++, Style::CYAN | Style::BRIGHT, Style::DEFAULT,
+            "RESIZE: width=%d height=%d", ev.width, ev.height);
+          break;
+        case EventType::MOUSE:  // intercept mouse clicks and wheel scrolls
+          term.printf(0, y++, Style::GREEN, Style::DEFAULT,
+            "MOUSE:  button=%d x=%d y=%d", ev.button, ev.x, ev.y);
+          break;
+        case EventType::NONE:
+          term.printf(0, y++, Style::MAGENTA, Style::DEFAULT,
+            "NONE:   nothing happen for 30 seconds");
+      }
+
+      term.flush();
     }
 
-    mbox::flush();
+    // mbox::term term2; <- will throw `std::logic_error`; `term` is a singleton
   }
 
-  mbox::shutdown(); // shutdown explicitly or wile things will happen
+  printf("When the `mbox::term` object is destroyed,\n");
+  printf("the terminal's state is restored.\n");
 }
