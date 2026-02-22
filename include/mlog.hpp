@@ -7,7 +7,7 @@
 namespace mlog {
   enum class Level { Debug, Info, Warning, Error, Fatal };
 
-  inline std::string path = "stdout"; // "stdout" and "stderr" have colors
+  inline std::string path = "stdout"; // "stdout" and "stderr" will use colors
   inline std::string time_fmt = "%d-%m-%Y %H:%M:%S";
   inline Level level = Level::Warning;
   inline bool timestamps = true;
@@ -37,7 +37,6 @@ namespace mlog {
   }
 
   inline std::string get_timestr() {
-
     time_t time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 
     char buffer[64];
@@ -62,11 +61,8 @@ namespace mlog {
     else if (path == "stderr") std::cerr << stream.str() << '\n';
     else {
       std::ofstream file(path, std::ios::app);
-      if (file.is_open()) {
-        file << stream.str() << '\n';
-      } else {
-        std::cerr << "Failed to open log file: " << path;
-      }
+      if (file.is_open()) file << stream.str() << '\n';
+      else std::cerr << "Failed to open log file: " << path;
     }
   }
 

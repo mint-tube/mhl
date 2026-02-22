@@ -14,5 +14,5 @@ methods. There isn't much else to know.
 ## List of avaliable headers
 
 - `mlog` - The simplest possible C++ logging library; output to either stdin/stderr (colored) or specified path. 90 LOC.
-- `mbox` - Advanced terminal I/O library inspired by `termbox2`. 2700 LOC.
+- `mbox` - Advanced POSIX terminal I/O library inspired by `termbox2`. 2700 LOC.
 <!-- - `mcfg` - TODO -->
