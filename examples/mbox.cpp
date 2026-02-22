@@ -8,7 +8,7 @@ int main() {
     term.printf(0, y++, Style::DEFAULT, Style::DEFAULT,
       "привет from mbox!"); // full support of Unicode
     term.printf(0, y++, Style::DEFAULT, Style::DEFAULT,
-      "width=%d height=%d", term.get_width(), term.get_height()); // string formatting as in std::printf()
+      "width=%d height=%d", term.get_width(), term.get_height()); // classical string formatting
     term.printf(0, y++, Style::BLUE | Style::BRIGHT, Style::DEFAULT, // attributes can be combined
       "버튼을 <ESC> to quit");
     term.flush(); // decide when to flush the buffer manually
@@ -26,8 +26,10 @@ int main() {
       ev = term.peek_event(30 * 1000); // poll for 30 seconds
       switch (ev.type) {
         case EventType::KEY:    // process each keystroke individually
+          char utf8[7];
+          mbox::utf32_to_utf8(utf8, ev.ch);
           term.printf(0, y++, Style::YELLOW, Style::DEFAULT,
-            "KEY:    mod=%d key=%d char=%c", ev.mod, ev.key, ev.ch);
+            "KEY:    mod=%d key=%d char=%s", ev.mod, ev.key, utf8);
           break;
         case EventType::RESIZE: // react to resizing
           term.printf(0, y++, Style::CYAN | Style::BRIGHT, Style::DEFAULT,

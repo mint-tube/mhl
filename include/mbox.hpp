@@ -1538,13 +1538,11 @@ namespace mbox {
   };
   static constexpr size_t WCWIDTH_TABLE_LENGTH = 2143;
 
+  // Check if given unicode codepoint is printable
   bool char32_printable(char32_t ch) {
-    // 1-byte codepoints
     if ((ch >= 0x20 && ch <= 0x7e) || (ch >= 0xa0 && ch <= 0xff)) {
       return true;
-    } else if (ch <= 0xff) {
-      return false;
-    }
+    } else if (ch <= 0xff) return false;
 
     int lo = 0, hi = WCWIDTH_TABLE_LENGTH - 1;
     while (lo <= hi) {
@@ -1560,7 +1558,7 @@ namespace mbox {
 
     return false; // invalid codepoint
   }
-  size_t char32_width(char32_t ch) {
+  size_t utf32_width(char32_t ch) {
     // 1-byte codepoints
     if ((ch >= 0x20 && ch <= 0x7e) || (ch >= 0xa0 && ch <= 0xff)) {
       return 1;
@@ -1583,7 +1581,7 @@ namespace mbox {
 
     return 0; // invalid codepoint
   }
-  // @brief Convert UTF-8 null-terminated byte sequence to UTF-32 codepoint.
+  // Convert UTF-8 null-terminated byte sequence to UTF-32 codepoint.
   //
   // If `c` is an empty string, return 0. `out` is left unchanged.
   // If a null byte is encountered in the middle of the codepoint, return a
@@ -1591,7 +1589,7 @@ namespace mbox {
   // unchanged.
   //
   // Otherwise, return byte length of codepoint (1-6).
-  int chars_to_char32(char32_t* out, const char* c) {
+  int utf8_to_utf32(char32_t* out, const char* c) {
     if (*c == '\0') return 0;
 
     uint8_t len = static_cast<size_t>(utf8_length[(uint8_t)c[0]]);
@@ -1610,7 +1608,7 @@ namespace mbox {
   }
   // Convert UTF-32 codepoint `c` to UTF-8 null-terminated byte sequence at `&out`.
   // Return the length of the codepoint (1-6).
-  size_t char32_to_chars(char* out, char32_t c) {
+  size_t utf32_to_utf8(char* out, char32_t c) {
     uint8_t first;
     size_t len;
     if (c < 0x80) {
@@ -2035,7 +2033,7 @@ namespace mbox {
       if (!char32_printable(ch)) ch = 0xfffd; // replace non-printable codepoints with U+FFFD
 
       char ch8[8];
-      size_t ch8_len = char32_to_chars(ch8, ch);
+      size_t ch8_len = utf32_to_utf8(ch8, ch);
       out.nputs(ch8, ch8_len);
     }
     void send_full_clear() {
@@ -2232,7 +2230,7 @@ namespace mbox {
       // UTF-8?
       if (in.buf.size() >= utf8_length[from_key(first_key)]) {
         event->type = EventType::KEY;
-        chars_to_char32(&event->ch, in.buf.data());
+        utf8_to_utf32(&event->ch, in.buf.data());
         event->key = to_key(0);
         in.shift(utf8_length[from_key(first_key)]);
         return true;
@@ -2461,7 +2459,7 @@ namespace mbox {
           cell cell_back = back.at(x, y);
           cell cell_front = front.at(x, y);
 
-          size_t w = char32_width(static_cast<char32_t>(cell_back.ch));
+          size_t w = utf32_width(static_cast<char32_t>(cell_back.ch));
           if (cell_back != cell_front) {
             front.at(x, y) = cell_back;
             send_attr(cell_back.fg, cell_back.bg);
@@ -2583,7 +2581,7 @@ namespace mbox {
       uint16_t orig_x = x;
       while (*str) {
         char32_t ch;
-        int rv = chars_to_char32(&ch, str);
+        int rv = utf8_to_utf32(&ch, str);
         size_t w;
 
         if (rv <= 0) ch = 0xfffd; // replace invalid UTF-8 sequence with U+FFFD
@@ -2593,7 +2591,7 @@ namespace mbox {
           y += 1;
           continue;
         } else if (char32_printable(ch)) {
-          w = char32_width(ch);
+          w = utf32_width(ch);
         } else {
           ch = 0xfffd; // replace non-printable with U+FFFD
           w = 0; // NOTE: w = 1?
