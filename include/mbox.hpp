@@ -2299,10 +2299,8 @@ namespace mbox {
     // @throws `std::logic_error` - an instance of `term` already exists.
     // @throws `std::runtime_error` - an unexpected error occured.
     term() {
-      if (self_ptr != nullptr) {
-        self_ptr->~term(); // explicitly deinit
+      if (self_ptr != nullptr)
         throw std::logic_error("Only one instance of `term` can exist at the same time");
-      }
 
       ttyfd = open("/dev/tty", O_RDWR);
       if (ttyfd < 0) throw std::runtime_error("Failed to open /dev/tty");
