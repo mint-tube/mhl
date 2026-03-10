@@ -15,4 +15,4 @@ methods. There isn't much else to know.
 
 - `mlog` - The simplest possible C++ logging library; output to either stdin/stderr (colored) or specified path. 90 LOC.
 - `mbox` - Advanced POSIX terminal I/O library inspired by `termbox2`. 2700 LOC.
-<!-- - `mcfg` - TODO -->
+- `mcfg` - Yet another INI reader and writer, hopefully with a reasonable API.

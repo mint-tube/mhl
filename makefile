@@ -1,4 +1,4 @@
-CXX = g++
+CXX ?= clang++
 CXXFLAGS = -std=c++17 -Wall -Wextra -Wpedantic -Werror -I./include
 
 SRCS = $(wildcard examples/*.cpp)

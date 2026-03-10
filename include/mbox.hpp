@@ -2360,6 +2360,7 @@ namespace mbox {
       default_bg = bg;
     }
     // Set cell contents in the back buffer at the specified position. 
+    // @note Also see `set_cell`.
     void set_cell(uint16_t x, uint16_t y, Style fg, Style bg, char32_t ch) {
       back.at(x, y) = cell(ch, fg, bg);
     }
@@ -2586,7 +2587,7 @@ namespace mbox {
 
         if (rv <= 0) ch = 0xfffd; // replace invalid UTF-8 sequence with U+FFFD
 
-        if (ch == '\n') { // NOTE: \r, \t, \v, \f, etc?
+        if (ch == '\n') { // TODO: \r, \t, \v, \f, etc?
           x = orig_x;
           y += 1;
           continue;
@@ -2594,7 +2595,7 @@ namespace mbox {
           w = utf32_width(ch);
         } else {
           ch = 0xfffd; // replace non-printable with U+FFFD
-          w = 0; // NOTE: w = 1?
+          w = 0;
         }
 
         if (w != 0) {
