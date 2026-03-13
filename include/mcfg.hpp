@@ -21,31 +21,34 @@ namespace mcfg {
     // @throws `std::runtime_error` - failed to read the config.
     config(std::filesystem::path filepath) : path(filepath) {
       std::ifstream fin(path);
-      if (!fin) throw std::runtime_error("Failed to open \"" + std::string(path) + '"');
+      if (!fin) throw std::runtime_error("Failed to open \"" + path.string() + '"');
 
       size_t lineno = 1;
       std::string current_section_name;
-      std::vector<std::pair<std::string, std::string>> current_fields;
+      std::vector<std::pair<std::string, std::string>> new_fields;
 
       // merge the accumulated fields into the section list
       auto merge_block = [&]() {
-        if (current_fields.empty()) return;
+        if (new_fields.empty()) return;
 
         auto section = std::find_if(sections.begin(), sections.end(),
-          [&](const auto& p) { return p.first == current_section_name; });
+          [&](const auto& sec) { return sec.first == current_section_name; });
 
         // add fields that do not already exist in the section
         if (section != sections.end()) {
-          for (auto& field : current_fields) {
-            auto& existing_fields = section->second;
-            auto field_it = std::find_if(existing_fields.begin(), existing_fields.end(),
-              [&](const auto& fp) { return fp.first == field.first; });
-            if (field_it == existing_fields.end()) existing_fields.push_back(field);
+          for (auto& new_field : new_fields) {
+            auto& fields = section->second;
+            auto field = std::find_if(fields.begin(), fields.end(),
+              [&](const auto& fp) { return fp.first == new_field.first; });
+            if (field == fields.end()) [[likely]]
+              fields.push_back(new_field);
+            else
+              field->second = new_field.second;
           }
         } else {
-          sections.emplace_back(current_section_name, current_fields);
+          sections.emplace_back(current_section_name, new_fields);
         }
-        current_fields.clear();
+        new_fields.clear();
         };
 
       for (std::string line; std::getline(fin, line); lineno++) {
@@ -57,23 +60,23 @@ namespace mcfg {
           merge_block();  // store previous section
           size_t rsb_pos = line.find_last_of(']');
           if (rsb_pos == std::string::npos)
-            throw std::invalid_argument(std::string(path) + ":" + std::to_string(lineno) + ": '[' was never closed.");
+            throw std::invalid_argument(path.string() + ":" + std::to_string(lineno) + ": '[' was never closed.");
           current_section_name = strip(line.substr(1, rsb_pos - 1));
         } else {
           size_t equal_pos = line.find_first_of('=');
           if (equal_pos == std::string::npos)
-            throw std::invalid_argument(std::string(path) + ":" + std::to_string(lineno) + ": no '=' after field's name.");
+            throw std::invalid_argument(path.string() + ":" + std::to_string(lineno) + ": no '=' after field's name.");
           if (equal_pos == 0)
-            throw std::invalid_argument(std::string(path) + ":" + std::to_string(lineno) + ": field has no name");
+            throw std::invalid_argument(path.string() + ":" + std::to_string(lineno) + ": field has no name");
           std::string name = strip(line.substr(0, equal_pos));
           std::string value = strip(line.substr(equal_pos + 1));
 
           // Within the same block, last occurrence wins (overwrite)
-          auto it = std::find_if(current_fields.begin(), current_fields.end(),
+          auto it = std::find_if(new_fields.begin(), new_fields.end(),
             [&](const auto& fp) { return fp.first == name; });
 
-          if (it != current_fields.end()) it->second = value;
-          else current_fields.emplace_back(name, value);
+          if (it != new_fields.end()) it->second = value;
+          else new_fields.emplace_back(name, value);
         }
       }
 
