@@ -13,7 +13,7 @@ namespace mlog {
   inline bool timestamps = true;
   inline bool muted = false;
 
-  inline void clear(const std::string& path) { std::remove(path.c_str()); }
+  inline void clear(const std::string &path) { std::remove(path.c_str()); }
 
   inline const std::string level_to_string(Level lvl) {
     switch (lvl) {

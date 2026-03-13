@@ -32,14 +32,14 @@ namespace mcfg {
         if (new_fields.empty()) return;
 
         auto section = std::find_if(sections.begin(), sections.end(),
-          [&](const auto& sec) { return sec.first == current_section_name; });
+          [&](const auto &sec) { return sec.first == current_section_name; });
 
         // add fields that do not already exist in the section
         if (section != sections.end()) {
-          for (auto& new_field : new_fields) {
-            auto& fields = section->second;
+          for (auto &new_field : new_fields) {
+            auto &fields = section->second;
             auto field = std::find_if(fields.begin(), fields.end(),
-              [&](const auto& fp) { return fp.first == new_field.first; });
+              [&](const auto &fp) { return fp.first == new_field.first; });
             if (field == fields.end()) [[likely]]
               fields.push_back(new_field);
             else
@@ -73,7 +73,7 @@ namespace mcfg {
 
           // Within the same block, last occurrence wins (overwrite)
           auto it = std::find_if(new_fields.begin(), new_fields.end(),
-            [&](const auto& fp) { return fp.first == name; });
+            [&](const auto &fp) { return fp.first == name; });
 
           if (it != new_fields.end()) it->second = value;
           else new_fields.emplace_back(name, value);
@@ -85,14 +85,14 @@ namespace mcfg {
 
     // Return the value of a given field.
     // If no such section or field exists - return an empty string.
-    const std::string get(const std::string& section_name, const std::string& field_name) const {
+    const std::string get(const std::string &section_name, const std::string &field_name) const {
       auto section = std::find_if(sections.begin(), sections.end(),
-        [&](const auto& p) { return p.first == section_name; });
+        [&](const auto &p) { return p.first == section_name; });
       if (section == sections.end()) return "";
 
-      const auto& fields = section->second;
+      const auto &fields = section->second;
       auto field = std::find_if(fields.begin(), fields.end(),
-        [&](const auto& fp) { return fp.first == field_name; });
+        [&](const auto &fp) { return fp.first == field_name; });
       if (field == fields.end()) return "";
 
       return field->second;
@@ -106,15 +106,15 @@ namespace mcfg {
       value = strip(value);
 
       auto section = std::find_if(sections.begin(), sections.end(),
-        [&](const auto& p) { return p.first == section_name; });
+        [&](const auto &p) { return p.first == section_name; });
       if (section == sections.end()) {
         sections.emplace_back(section_name, std::vector<std::pair<std::string, std::string>>{{field_name, value}});
         return;
       }
 
-      auto& fields = section->second;
+      auto &fields = section->second;
       auto field = std::find_if(fields.begin(), fields.end(),
-        [&](const auto& fp) { return fp.first == field_name; });
+        [&](const auto &fp) { return fp.first == field_name; });
 
       if (field == fields.end()) fields.emplace_back(field_name, value);
       else field->second = value;
@@ -128,9 +128,9 @@ namespace mcfg {
     }
 
     // Get a list of fields in a given section
-    std::vector<std::string> list_fields(const std::string& section_name) const {
+    std::vector<std::string> list_fields(const std::string &section_name) const {
       auto section = std::find_if(sections.begin(), sections.end(),
-        [&](const auto& p) { return p.first == section_name; });
+        [&](const auto &p) { return p.first == section_name; });
       if (section == sections.end()) return {};
 
       auto fields = section->second;
@@ -139,37 +139,37 @@ namespace mcfg {
       return keys;
     }
 
-    bool has_section(const std::string& section_name) const {
+    bool has_section(const std::string &section_name) const {
       return std::find_if(sections.begin(), sections.end(),
-        [&](const auto& p) { return p.first == section_name; }) != sections.end();
+        [&](const auto &p) { return p.first == section_name; }) != sections.end();
     }
 
-    bool has_field(const std::string& section_name, const std::string& field_name) const {
+    bool has_field(const std::string &section_name, const std::string &field_name) const {
       auto section = std::find_if(sections.begin(), sections.end(),
-        [&](const auto& p) { return p.first == section_name; });
+        [&](const auto &p) { return p.first == section_name; });
       if (section == sections.end()) return false;
 
       return std::find_if(section->second.begin(), section->second.end(),
-        [&](const auto& fp) { return fp.first == field_name; }) != section->second.end();
+        [&](const auto &fp) { return fp.first == field_name; }) != section->second.end();
     }
 
     // Erase a section and all its fields.
-    void erase_section(const std::string& section_name) {
+    void erase_section(const std::string &section_name) {
       auto it = std::find_if(sections.begin(), sections.end(),
-        [&](const auto& p) { return p.first == section_name; });
+        [&](const auto &p) { return p.first == section_name; });
       if (it != sections.end()) sections.erase(it);
     }
 
     // Erase a field.
     // If it was the only field in the section - erase the section as well.
-    void erase(const std::string& section_name, const std::string& field_name) {
+    void erase(const std::string &section_name, const std::string &field_name) {
       auto section = std::find_if(sections.begin(), sections.end(),
-        [&](const auto& p) { return p.first == section_name; });
+        [&](const auto &p) { return p.first == section_name; });
       if (section == sections.end()) return;
 
-      auto& fields = section->second;
+      auto &fields = section->second;
       auto field = std::find_if(fields.begin(), fields.end(),
-        [&](const auto& fp) { return fp.first == field_name; });
+        [&](const auto &fp) { return fp.first == field_name; });
       if (field == fields.end()) return;
 
       fields.erase(field);
@@ -183,9 +183,9 @@ namespace mcfg {
       std::ofstream fout(filepath);
       if (!fout) throw std::runtime_error("Failed to open \"" + filepath.string() + '"');
 
-      for (const auto& section : sections) {
+      for (const auto &section : sections) {
         if (!section.first.empty()) fout << "\n[" << section.first << "]\n";
-        for (const auto& field : section.second)
+        for (const auto &field : section.second)
           fout << field.first << " = " << field.second << '\n';
       }
     }
