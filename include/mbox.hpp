@@ -2643,7 +2643,6 @@ namespace mbox {
   Copyright (c) 2026 mint_tube <mmooyrs@gmail.com>
 
   Redistribution and use of this file, with or without modification,
-  are permitted in any medium without royalty provided the copyright
-  notice and this notice are preserved. This file is offered as-is,
-  without any form of warranty.
+  are permitted in any medium without royalty provided this notice is preserved.
+  This file is offered as-is, without any form of warranty.
 */
