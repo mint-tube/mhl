@@ -6,13 +6,17 @@
 #include <cstdint>
 #include <cerrno>
 #include <csignal>
-#include <cassert>
 #include <cstdarg>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <sys/select.h>
 #include <termios.h>
+
+// NEVER use `cassert` with mbox - it will leave the terminal ununable.
+#ifdef assert
+#undef assert
+#endif
 
 enum class Key : uint8_t {
   CTRL_TILDE = 0x00, CTRL_2 = 0x00,
@@ -224,7 +228,6 @@ namespace mbox {
     }
 
     cell &at(uint16_t x, uint16_t y) {
-      assert(in_bounds(x, y));
       return this->cells[y * width + x];
     }
     bool in_bounds(uint16_t x, uint16_t y) {
@@ -310,7 +313,6 @@ namespace mbox {
     Key key;
     Mod mod;
   };
-
 
   static const int16_t terminfo_cap_indexes[] = {
     66,  // kf1 (Cap::F1)
@@ -1676,8 +1678,6 @@ namespace mbox {
       cap_trie *next, *node = &cap_trie_root;
       size_t i, j;
 
-      assert(cap && strlen(cap) > 0);
-
       for (i = 0; cap[i] != '\0'; i++) {
         char c = cap[i];
         next = nullptr;
@@ -2210,9 +2210,7 @@ namespace mbox {
           return true;
         }
 
-        assert(static_cast<bool>(event->mod & Mod::ALT));
-        // Recurse for alt key
-        event->mod = event->mod | Mod::ALT;
+        event->mod = event->mod | Mod::ALT; // Recurse for alt key
         in.shift(1);
         return extract_event(event);
       }
@@ -2241,8 +2239,6 @@ namespace mbox {
     }
 
     void init_term_attrs() {
-      assert(ttyfd >= 0);
-
       if (tcgetattr(ttyfd, &orig_tios) != 0)
         throw std::runtime_error("`tcgetattr` failed: " + std::string(strerror(errno)));
 
@@ -2296,11 +2292,14 @@ namespace mbox {
 
 
   public:
+    // get the pointer to the singletone.
+    static term *get_instance() { return self_ptr; }
+
     // @throws `std::logic_error` - an instance of `term` already exists.
     // @throws `std::runtime_error` - an unexpected error occured.
     term() {
       if (self_ptr != nullptr)
-        throw std::logic_error("Only one instance of `term` can exist at the same time");
+        throw std::logic_error("Only one instance of `mbox::term` can exist at the same time");
 
       ttyfd = open("/dev/tty", O_RDWR);
       if (ttyfd < 0) throw std::runtime_error("Failed to open /dev/tty");
@@ -2447,9 +2446,6 @@ namespace mbox {
 
     // Write the back buffer to the tty. 
     void flush() {
-      assert(back.width == front.width
-        && back.height == front.height);
-
       last_x = -1;
       last_y = -1;
 
