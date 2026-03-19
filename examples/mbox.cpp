@@ -23,7 +23,7 @@ int main() {
         y = 0;
       };
 
-      ev = term.peek_event(30 * 1000); // poll for 30 seconds
+      ev = term.peek_event(20 * 1000); // poll for 30 seconds
       switch (ev.type) {
         case EventType::KEY:    // process each keystroke individually
           char utf8[7];
@@ -41,7 +41,7 @@ int main() {
           break;
         case EventType::NONE:
           term.printf(0, y++, Style::MAGENTA, Style::DEFAULT,
-            "NONE:   nothing happen for 30 seconds");
+            "NONE:   nothing happen for 20 seconds");
       }
 
       term.flush();
