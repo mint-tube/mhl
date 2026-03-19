@@ -540,14 +540,17 @@ namespace mbox {
   static struct {
     const char *name;
     const char **caps;
-    const char *alias;
   } builtin_terms[] = {
-      {"xterm",         xterm_caps,         ""    },
-      {"linux",         linux_caps,         ""    },
-      {"screen",        screen_caps,        "tmux"},
-      {"rxvt-256color", rxvt_256color_caps, ""    },
-      {"rxvt-unicode",  rxvt_unicode_caps,  "rxvt"},
-      {nullptr,         nullptr,            nullptr  },
+      {"xterm-256color", xterm_caps        },
+      {"xterm",          xterm_caps        },
+      {"linux",          linux_caps        },
+      {"screen",         screen_caps       },
+      {"tmux",           screen_caps       },
+      {"rxvt-256color",  rxvt_256color_caps},
+      {"rxvt-unicode",   rxvt_unicode_caps },
+      {"rxvt",           rxvt_unicode_caps },
+      {"urxvt",          rxvt_unicode_caps },
+      {nullptr,          nullptr           },
   };
 
   static struct {
@@ -1787,20 +1790,8 @@ namespace mbox {
       const char *term = getenv("TERM");
       if (!term) throw std::runtime_error("`$TERM` is unset");
 
-      // Check for exact TERM match
       for (size_t i = 0; builtin_terms[i].name != nullptr; i++) {
         if (strcmp(term, builtin_terms[i].name) == 0) {
-          for (size_t j = 0; j < CAPSIZE; j++)
-            caps[j] = builtin_terms[i].caps[j];
-          return;
-        }
-      }
-
-      // Check for partial TERM or alias match
-      for (size_t i = 0; builtin_terms[i].name != nullptr; i++) {
-        if (strstr(term, builtin_terms[i].name) != nullptr ||
-          (*(builtin_terms[i].alias) != '\0' &&
-            strstr(term, builtin_terms[i].alias) != nullptr)) {
           for (size_t j = 0; j < CAPSIZE; j++)
             caps[j] = builtin_terms[i].caps[j];
           return;
