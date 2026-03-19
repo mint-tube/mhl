@@ -13,12 +13,7 @@
 #include <sys/select.h>
 #include <termios.h>
 
-// NEVER use `cassert` with mbox - it will leave the terminal ununable.
-#ifdef assert
-#undef assert
-#endif
-
-enum class Key : uint8_t {
+enum class Key {
   CTRL_TILDE = 0x00, CTRL_2 = 0x00,
   CTRL_A = 0x01,
   CTRL_B = 0x02,
@@ -82,7 +77,6 @@ constexpr inline uint8_t from_key(Key i) { return static_cast<uint8_t>(i); }
 
 enum class Button { RELEASE, LEFT, RIGHT, MIDDLE, WHEEL_UP, WHEEL_DOWN };
 
-// TODO: namespace
 enum class Style : uint16_t {
   DEFAULT = 0x0000,
   BLACK = 0x0001,
@@ -93,15 +87,14 @@ enum class Style : uint16_t {
   MAGENTA = 0x0006,
   CYAN = 0x0007,
   WHITE = 0x0008,
-  // bitwise
+  // bitwise attributes
   BOLD = 0x0100,
   UNDERLINE = 0x0200,
   REVERSE = 0x0400,
   ITALIC = 0x0800,
-  BLINK = 0x1000,
-  BLACK256 = 0x2000,
-  BRIGHT = 0x4000,
-  DIM = 0x8000
+  BRIGHT = 0x2000,
+  BLINK = 0x2000,
+  DIM = 0x4000,
 };
 constexpr inline Style to_style(uint16_t i) { return static_cast<Style>(i); }
 constexpr inline uint16_t from_style(Style i) { return static_cast<uint16_t>(i); }
@@ -110,6 +103,22 @@ inline Style operator&(Style left, Style right) { return to_style(from_style(lef
 inline Style operator~(Style right) { return to_style(~from_style(right)); }
 
 enum class EventType { NONE, KEY, RESIZE, MOUSE };
+
+enum class Mod { NONE = 0, ALT = 1, CTRL = 2, SHIFT = 4, MOTION = 8 };
+constexpr inline Mod operator|(Mod left, Mod right) {
+  return static_cast<Mod>(static_cast<uint8_t>(left) | static_cast<uint8_t>(right));
+}
+constexpr inline Mod operator&(Mod left, Mod right) {
+  return static_cast<Mod>(static_cast<uint8_t>(left) & static_cast<uint8_t>(right));
+}
+
+enum class InputMode { CURRENT = 0, ESC = 1, ALT = 2, MOUSE = 4 };
+constexpr inline InputMode operator|(InputMode left, InputMode right) {
+  return static_cast<InputMode>(static_cast<uint8_t>(left) | static_cast<uint8_t>(right));
+}
+constexpr inline InputMode operator&(InputMode left, InputMode right) {
+  return static_cast<InputMode>(static_cast<uint8_t>(left) & static_cast<uint8_t>(right));
+}
 
 // TODO: implementation details?
 namespace Cap {
@@ -153,44 +162,16 @@ namespace Cap {
   constexpr uint8_t DIM = 36;
   constexpr uint8_t INVISIBLE = 37;
 };
-constexpr size_t CAPSIZE = 38; // pun intended
 
 namespace HardCap {
   constexpr const char ENTER_MOUSE[] = "\x1b[?1000h\x1b[?1002h\x1b[?1015h\x1b[?1006h";
   constexpr const char EXIT_MOUSE[] = "\x1b[?1006l\x1b[?1015l\x1b[?1002l\x1b[?1000l";
 }
 
-enum class Mod : uint8_t { // bitwise
-  NONE = 0,
-  ALT = 1,
-  CTRL = 2,
-  SHIFT = 4,
-  MOTION = 8,
-};
-constexpr inline Mod operator|(Mod left, Mod right) {
-  return static_cast<Mod>(static_cast<uint8_t>(left) | static_cast<uint8_t>(right));
-}
-constexpr inline Mod operator&(Mod left, Mod right) {
-  return static_cast<Mod>(static_cast<uint8_t>(left) & static_cast<uint8_t>(right));
-}
-
-enum class InputMode : uint8_t { // bitwise
-  CURRENT = 0,
-  ESC = 1,
-  ALT = 2,
-  MOUSE = 4,
-};
-constexpr inline InputMode operator|(InputMode left, InputMode right) {
-  return static_cast<InputMode>(static_cast<uint8_t>(left) | static_cast<uint8_t>(right));
-}
-constexpr inline InputMode operator&(InputMode left, InputMode right) {
-  return static_cast<InputMode>(static_cast<uint8_t>(left) & static_cast<uint8_t>(right));
-}
-
-enum class OutputMode : uint8_t { CURRENT, NORMAL, COLOR256, COLOR216, GRAYSCALE, };
-
-
 namespace mbox {
+  constexpr size_t CAPSIZE = 38;
+
+
   // A cell in a 2d grid representing the terminal screen.
   //
   // For non-single-width codepoints:
@@ -555,46 +536,6 @@ namespace mbox {
     "",                   // dim (Cap::DIM)
     "",                   // invis (Cap::INVISIBLE)
   };
-  static const char *eterm_caps[] = {
-    "\033[11~",              // kf1 (Cap::F1)
-    "\033[12~",              // kf2 (Cap::F2)
-    "\033[13~",              // kf3 (Cap::F3)
-    "\033[14~",              // kf4 (Cap::F4)
-    "\033[15~",              // kf5 (Cap::F5)
-    "\033[17~",              // kf6 (Cap::F6)
-    "\033[18~",              // kf7 (Cap::F7)
-    "\033[19~",              // kf8 (Cap::F8)
-    "\033[20~",              // kf9 (Cap::F9)
-    "\033[21~",              // kf10 (Cap::F10)
-    "\033[23~",              // kf11 (Cap::F11)
-    "\033[24~",              // kf12 (Cap::F12)
-    "\033[2~",               // kich1 (Cap::INSERT)
-    "\033[3~",               // kdch1 (Cap::DELETE)
-    "\033[7~",               // khome (Cap::HOME)
-    "\033[8~",               // kend (Cap::END)
-    "\033[5~",               // kpp (Cap::PGUP)
-    "\033[6~",               // knp (Cap::PGDN)
-    "\033[A",                // kcuu1 (Cap::ARROW_UP)
-    "\033[B",                // kcud1 (Cap::ARROW_DOWN)
-    "\033[D",                // kcub1 (Cap::ARROW_LEFT)
-    "\033[C",                // kcuf1 (Cap::ARROW_RIGHT)
-    "",                      // kcbt (Cap::BACK_TAB)
-    "\0337\033[?47h",        // smcup (Cap::ENTER_CA)
-    "\033[2J\033[?47l\0338", // rmcup (Cap::EXIT_CA)
-    "\033[?25h",             // cnorm (Cap::SHOW_CURSOR)
-    "\033[?25l",             // civis (Cap::HIDE_CURSOR)
-    "\033[H\033[2J",         // clear (Cap::CLEAR_SCREEN)
-    "\033[m\017",            // sgr0 (Cap::SGR0)
-    "\033[4m",               // smul (Cap::UNDERLINE)
-    "\033[1m",               // bold (Cap::BOLD)
-    "\033[5m",               // blink (Cap::BLINK)
-    "",                      // sitm (Cap::ITALIC)
-    "\033[7m",               // rev (Cap::REVERSE)
-    "",                      // smkx (Cap::ENTER_KEYPAD)
-    "",                      // rmkx (Cap::EXIT_KEYPAD)
-    "",                      // dim (Cap::DIM)
-    "",                      // invis (Cap::INVISIBLE)
-  };
 
   static struct {
     const char *name;
@@ -605,8 +546,7 @@ namespace mbox {
       {"linux",         linux_caps,         ""    },
       {"screen",        screen_caps,        "tmux"},
       {"rxvt-256color", rxvt_256color_caps, ""    },
-      {"rxvt-char32_t", rxvt_unicode_caps,  "rxvt"},
-      {"Eterm",         eterm_caps,         ""    },
+      {"rxvt-unicode",  rxvt_unicode_caps,  "rxvt"},
       {nullptr,         nullptr,            nullptr  },
   };
 
@@ -1658,7 +1598,6 @@ namespace mbox {
     Style last_fg = ~default_fg;
     Style last_bg = ~default_bg;
     InputMode input_mode = InputMode::ESC;
-    OutputMode output_mode = OutputMode::NORMAL;
     std::string terminfo;
     const char *caps[CAPSIZE] = {};
     cap_trie cap_trie_root = {};
@@ -1868,7 +1807,7 @@ namespace mbox {
         }
       }
 
-      throw std::runtime_error("Your terminal is cursed");
+      throw std::runtime_error("Neither terminfo nor fallback caps found for your terminal.");
     }
 
     void update_term_size() {
@@ -1918,101 +1857,32 @@ namespace mbox {
       send_full_clear();
     }
 
-    void send_sgr(char32_t cfg, char32_t cbg, int fg_is_default, int bg_is_default) {
-      if (fg_is_default && bg_is_default) return;
-      switch (output_mode) {
-        default:
-        case OutputMode::NORMAL:
-          out.puts("\x1b[");
-          if (!fg_is_default) {
-            out.put_number(cfg);
-            if (!bg_is_default) out.puts(";");
-          }
-          if (!bg_is_default) out.put_number(cbg);
-          out.puts("m");
-          break;
-
-        case OutputMode::COLOR256:
-        case OutputMode::COLOR216:
-        case OutputMode::GRAYSCALE:
-          out.puts("\x1b[");
-          if (!fg_is_default) {
-            out.puts("38;5;");
-            out.put_number(cfg);
-            if (!bg_is_default) out.puts(";");
-          }
-          if (!bg_is_default) {
-            out.puts("48;5;");
-            out.put_number(cbg);
-          }
-          out.puts("m");
-          break;
-      }
-    }
     void send_attr(Style fg, Style bg) {
       if (fg == last_fg && bg == last_bg) return;
 
       out.puts(caps[Cap::SGR0]);
-
-      char32_t cfg, cbg;
-      switch (output_mode) {
-        default:
-        case OutputMode::NORMAL:
-          // The minus 1 below is because our colors are 1-indexed starting
-          // from black. Black is represented by a 30, 40, 90, or 100 for fg,
-          // bg, bright fg, or bright bg respectively. Red is 31, 41, 91,
-          // 101, etc.
-          cfg = (from_style(fg & Style::BRIGHT) ? 90 : 30) + from_style(fg & to_style(0x0f)) - 1;
-          cbg = (from_style(bg & Style::BRIGHT) ? 100 : 40) + from_style(bg & to_style(0x0f)) - 1;
-          break;
-
-        case OutputMode::COLOR256:
-          cfg = from_style(fg & to_style(0xff));
-          cbg = from_style(bg & to_style(0xff));
-          if (from_style(fg & Style::BLACK256)) cfg = 0;
-          if (from_style(bg & Style::BLACK256)) cbg = 0;
-          break;
-
-        case OutputMode::COLOR216:
-          cfg = from_style(fg & to_style(0xff));
-          cbg = from_style(bg & to_style(0xff));
-          if (cfg > 216) cfg = 216;
-          if (cbg > 216) cbg = 216;
-          cfg += 0x0f;
-          cbg += 0x0f;
-          break;
-
-        case OutputMode::GRAYSCALE:
-          cfg = from_style(fg & to_style(0xff));
-          cbg = from_style(bg & to_style(0xff));
-          if (cfg > 24) cfg = 24;
-          if (cbg > 24) cbg = 24;
-          cfg += 0xe7;
-          cbg += 0xe7;
-          break;
-      }
-
-      if (from_style(fg & Style::BOLD))
-        out.puts(caps[Cap::BOLD]);
-      if (from_style(fg & Style::BLINK))
-        out.puts(caps[Cap::BLINK]);
-      if (from_style(fg & Style::UNDERLINE))
-        out.puts(caps[Cap::UNDERLINE]);
-      if (from_style(fg & Style::ITALIC))
-        out.puts(caps[Cap::ITALIC]);
-      if (from_style(fg & Style::DIM))
-        out.puts(caps[Cap::DIM]);
-      if (from_style(((fg & Style::REVERSE) | (bg & Style::REVERSE))))
-        out.puts(caps[Cap::REVERSE]);
+      if (from_style(fg & Style::BOLD)) out.puts(caps[Cap::BOLD]);
+      if (from_style(fg & Style::BLINK)) out.puts(caps[Cap::BLINK]);
+      if (from_style(fg & Style::UNDERLINE)) out.puts(caps[Cap::UNDERLINE]);
+      if (from_style(fg & Style::ITALIC)) out.puts(caps[Cap::ITALIC]);
+      if (from_style(fg & Style::DIM)) out.puts(caps[Cap::DIM]);
+      if (from_style(((fg & Style::REVERSE) | (bg & Style::REVERSE)))) out.puts(caps[Cap::REVERSE]);
 
       bool fg_is_default = !(from_style(fg) & 0xff);
       bool bg_is_default = !(from_style(bg) & 0xff);
-      if (output_mode == OutputMode::COLOR256) {
-        fg_is_default = !from_style(fg & Style::BLACK256);
-        bg_is_default = !from_style(bg & Style::BLACK256);
+
+      // Minus 1 is because colors are 1-indexed.
+      if (!fg_is_default || !bg_is_default) {
+        out.puts("\x1b[");
+        if (!fg_is_default)
+          out.put_number((from_style(fg & Style::BRIGHT) ? 90 : 30) + (from_style(fg) & 0x0f) - 1);
+        if (!fg_is_default && !bg_is_default)
+          out.puts(";");
+        if (!bg_is_default)
+          out.put_number((from_style(bg & Style::BRIGHT) ? 100 : 40) + from_style(bg) & 0x0f - 1);
+        out.puts("m");
       }
 
-      send_sgr(cfg, cbg, fg_is_default, bg_is_default);
       last_fg = fg;
       last_bg = bg;
     }
@@ -2292,9 +2162,6 @@ namespace mbox {
 
 
   public:
-    // get the pointer to the singletone.
-    static term *get_instance() { return self_ptr; }
-
     // @throws `std::logic_error` - an instance of `term` already exists.
     // @throws `std::runtime_error` - an unexpected error occured.
     term() {
@@ -2514,61 +2381,9 @@ namespace mbox {
       return mode;
     }
 
-    // Set the output mode. Return the set mode.
-    //
-    // 1. `OutputMode::NORMAL`
-    //  Provides 8 colors:
-    //  `Style: : BLACK`, `Style::RED`, `Style::GREEN`, `Style::YELLOW`,
-    //  `Style::BLUE`, `Style::MAGENTA`, `Style::CYAN`, `Style::WHITE`
-    //  Which may be | 'd with attributes:
-    //  `Style::BOLD`, `Style::UNDERLINE`, `Style::REVERSE`, `Style::ITALIC`,
-    //  `Style::BLINK`, `Style::BRIGHT`, `Style::DIM`
-    // 
-    // 2. `OutputMode::COLOR256`
-    //  Provides 256 colors(plus default) :
-    // 0x00 : `Style: : DEFAULT`
-    //  `Style::BLACK256`:  black
-    //  0x01..0x07:         next 7 colors from `OutputMode: : NORMAL`
-    //  0x08..0x0f:         bright versions of the above
-    //  0x10..0xe7:         216 different colors
-    //  0xe8..0xff:         24 different shades of gray
-    //  Which may be | 'd with all the attributes except `Style::BRIGHT`.
-    //  `Style: : BLACK256` must be used for black, as 0x00 represents default.
-    //  Use `to_style()` to make a proper style.
-    // 
-    //  3. `OutputMode::COLOR216`
-    //  This mode only supports the 216 - color range of `OutputMode::256`:
-    //  0x00:              `Style: : DEFAULT`
-    //  0x01..0xd8:        216 colors
-    // 
-    // 4. `OutputMode: : GRAYSCALE`
-    //  This mode only supports the 24 - color range of `OutputMode::256`t:
-    //  0x00:              `Style: : DEFAULT`
-    //  0x01..0x18:        24 shades of gray
-    // 
-    // Cell attributes persist after switching output modes.
-    //  Not all terminals support all output modes.
-    //  The default output mode is `OutputMode: : NORMAL`.
-    OutputMode set_output_mode(OutputMode mode) {
-      switch (mode) {
-        case OutputMode::NORMAL:
-        case OutputMode::COLOR256:
-        case OutputMode::COLOR216:
-        case OutputMode::GRAYSCALE:
-          last_fg = ~default_fg;
-          last_bg = ~default_bg;
-          output_mode = mode;
-          return output_mode;
-        case OutputMode::CURRENT:
-          return output_mode;
-        default:
-          throw std::domain_error("Unreachable");
-      }
-    }
-
     // Does exactly what you think. Strings are interpreted as UTF-8.
     // Non-printable characters and invalid UTF-8 byte sequences are replaced with U+FFFD.
-    // Newlines will move cursor to the initial `x`
+    // Newlines will move cursor to the initial column of the next row.
     // @note Also see `set_cell`.
     void print(uint16_t x, uint16_t y, Style fg, Style bg, const char *str) {
       if (!back.in_bounds(x, y)) return; // nothing to do
