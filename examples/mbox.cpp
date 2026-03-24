@@ -6,12 +6,12 @@ int main() {
     size_t y = 0;
 
     term.printf(0, y++, Style::DEFAULT, Style::DEFAULT,
-      "привет from mbox!"); // full support of Unicode
+      "привет from mbox!");
     term.printf(0, y++, Style::DEFAULT, Style::DEFAULT,
-      "width=%d height=%d", term.get_width(), term.get_height()); // classical string formatting
+      "width=%d height=%d", term.get_width(), term.get_height());    // standard string formatting
     term.printf(0, y++, Style::BLUE | Style::BRIGHT, Style::DEFAULT, // attributes can be combined
-      "버튼을 <ESC> to quit");
-    term.flush(); // decide when to flush the buffer manually
+      "버튼을 <ESC> to quit");                                        // full support of UTF-8
+    term.flush();                                                    // flush the buffer manually
     y++;
 
     term.set_input_mode(InputMode::MOUSE); // opt-in for mouse input

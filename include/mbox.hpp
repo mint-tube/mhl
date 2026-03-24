@@ -285,12 +285,10 @@ namespace mbox {
     }
   };
 
-  // TODO: transform?
   struct cap_trie {
-    char c;
-    cap_trie *children;
-    size_t nchildren;
-    int is_leaf;
+    char ch;
+    std::vector<cap_trie> children;
+    bool is_leaf;
     Key key;
     Mod mod;
   };
@@ -1602,8 +1600,8 @@ namespace mbox {
     Style last_bg = ~default_bg;
     InputMode input_mode = InputMode::ESC;
     std::string terminfo;
-    const char *caps[CAPSIZE] = {};
-    cap_trie cap_trie_root = {};
+    const char *caps[CAPSIZE] = {}; // TODO: vectorize
+    cap_trie cap_trie_root;
     bytebuf in;
     bytebuf out;
     cellbuf back{0, 0};  // uniform initialization
@@ -1616,30 +1614,23 @@ namespace mbox {
       errno = saved_errno;
     }
 
-    void cap_trie_add(const char *cap, Key key, Mod mod) {
-      cap_trie *next, *node = &cap_trie_root;
-      size_t i, j;
+    void cap_trie_add(std::string_view cap, Key key, Mod mod) {
+      cap_trie *node = &cap_trie_root;
 
-      for (i = 0; cap[i] != '\0'; i++) {
-        char c = cap[i];
-        next = nullptr;
+      for (const char &ch : cap) {
+        cap_trie *next = nullptr;
 
-        // Check if c is already a child of node
-        for (j = 0; j < node->nchildren; j++) {
-          if (node->children[j].c == c) {
-            next = &node->children[j];
+        for (cap_trie &child : node->children)
+          if (child.ch == ch) {
+            next = &child;
             break;
           }
-        }
+
         if (!next) {
-          // We need to add a new child to node
-          node->nchildren += 1;
-          node->children = (cap_trie *)realloc(node->children, sizeof(cap_trie) * node->nchildren);
-          if (!node->children)
-            throw std::runtime_error("`realloc` failed: " + std::string(strerror(errno)));
-          next = &node->children[node->nchildren - 1];
-          memset(next, 0, sizeof(*next));
-          next->c = c;
+          cap_trie created;
+          created.ch = ch;
+          node->children.push_back(created);
+          next = &node->children.back();
         }
 
         node = next;
@@ -1647,40 +1638,9 @@ namespace mbox {
 
       if (node->is_leaf) return; // cap collision
 
-      node->is_leaf = 1;
+      node->is_leaf = true;
       node->key = key;
       node->mod = mod;
-    }
-    void cap_trie_find(const char *buf, size_t nbuf, cap_trie **last, size_t *depth) {
-      cap_trie *node = &cap_trie_root;
-      size_t i, j;
-      *last = node;
-      *depth = 0;
-      for (i = 0; i < nbuf; i++) {
-        char c = buf[i];
-        cap_trie *next = nullptr;
-
-        // find char in node.children
-        for (j = 0; j < node->nchildren; j++) {
-          if (node->children[j].c == c) {
-            next = &node->children[j];
-            break;
-          }
-        }
-        if (!next) return; // not found?
-        node = next;
-        *last = node; // TODO: why double pointer?
-        *depth += 1;
-        if (node->is_leaf && node->nchildren < 1) break;
-      }
-    }
-    void cap_trie_deinit(cap_trie *node) {
-      size_t j;
-      for (j = 0; j < node->nchildren; j++) {
-        cap_trie_deinit(&node->children[j]);
-      }
-      if (node->children) free(node->children);
-      memset(node, 0, sizeof(cap_trie));
     }
 
     bool load_terminfo_from_path(std::string path, std::string term) {
@@ -1907,20 +1867,35 @@ namespace mbox {
     }
 
     bool extract_esc_cap(event *event) {
-      cap_trie *node;
-      size_t depth;
+      const cap_trie *node = &cap_trie_root;
+      size_t depth = 0;
 
-      cap_trie_find(in.buf.data(), in.buf.size(), &node, &depth);
-      if (node->is_leaf) { // Found a leaf node
+      for (const char &ch : in.buf) {
+        const cap_trie *next = nullptr;
+
+        for (const cap_trie &child : node->children)
+          if (child.ch == ch) {
+            next = &child;
+            break;
+          }
+        if (!next) break; // invalid cap
+
+        node = next;
+        depth++;
+        if (node->is_leaf && node->children.empty()) break;
+      }
+
+      if (node->is_leaf) { // found an exact match
         event->type = EventType::KEY;
-        event->ch = 0;
+        event->ch = -1;
         event->key = node->key;
         event->mod = node->mod;
         in.shift(depth);
         return true;
-      } else if (node->nchildren > 0 && in.buf.size() <= depth) // Not enough input
+      } else if (!node->children.empty() && depth == in.buf.size()) // need more input
         return true;
-      return false;
+
+      return false; // absolutely not a valid cap
     }
     bool extract_esc_mouse(event *event) {
       size_t buf_shift = 0;
@@ -2198,8 +2173,6 @@ namespace mbox {
       if (resize_pipefd[0] >= 0) close(resize_pipefd[0]);
       if (resize_pipefd[1] >= 0) close(resize_pipefd[1]);
       self_ptr = nullptr;
-
-      cap_trie_deinit(&cap_trie_root);
     }
 
     // Return the width of the terminal.
@@ -2337,22 +2310,20 @@ namespace mbox {
       out.flush(ttyfd);
     }
 
-    // Set the input mode. Return the set mode.
+    InputMode get_input_mode() {
+      return input_mode;
+    }
+    // TODO: do I care enough?
+    // 1. `InputMode::ESC`: Singular `\x1b` is parsed as `Key::ESC`.
     //
-    // 1. `InputMode::ESC`
-    //    Singular `\x1b` is parsed as `Key::ESC`.
-    //
-    // 2. `InputMode::ALT`
-    //    Singular `\x1b` is parsed as `Mod::ALT`.
+    // 2. `InputMode::ALT`: Singular `\x1b` is parsed as `Mod::ALT`.
     //
     // `InputMode::MOUSE` can be |'d to either of the modes to start receiving `EventType::MOUSE` events.
     // If neither of the main two modes were set, but the MOUSE mode was, `InputMode::ESC` is used.
     // If you try to set both main modes, `InputMode::ESC` will be selected.
     //
     // The default input mode is `InputMode::ESC`. 
-    InputMode set_input_mode(InputMode mode) {
-      if (mode == InputMode::CURRENT) return input_mode;
-
+    void set_input_mode(InputMode mode) {
       InputMode esc_or_alt = InputMode::ESC | InputMode::ALT;
       if (!static_cast<bool>(mode & esc_or_alt)) { // neither specified; flip on ESC
         mode = mode | InputMode::ESC;
@@ -2369,7 +2340,6 @@ namespace mbox {
       }
 
       input_mode = mode;
-      return mode;
     }
 
     // Does exactly what you think. Strings are interpreted as UTF-8.
