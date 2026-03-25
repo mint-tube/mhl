@@ -112,14 +112,6 @@ constexpr inline Mod operator&(Mod left, Mod right) {
   return static_cast<Mod>(static_cast<uint8_t>(left) & static_cast<uint8_t>(right));
 }
 
-enum class InputMode { CURRENT = 0, ESC = 1, ALT = 2, MOUSE = 4 };
-constexpr inline InputMode operator|(InputMode left, InputMode right) {
-  return static_cast<InputMode>(static_cast<uint8_t>(left) | static_cast<uint8_t>(right));
-}
-constexpr inline InputMode operator&(InputMode left, InputMode right) {
-  return static_cast<InputMode>(static_cast<uint8_t>(left) & static_cast<uint8_t>(right));
-}
-
 // TODO: implementation details?
 namespace Cap {
   constexpr uint8_t F1 = 0;
@@ -1598,7 +1590,7 @@ namespace mbox {
     Style default_bg = Style::DEFAULT;
     Style last_fg = ~default_fg;
     Style last_bg = ~default_bg;
-    InputMode input_mode = InputMode::ESC;
+    bool mouse_mode = false;
     std::string terminfo;
     const char *caps[CAPSIZE] = {}; // TODO: vectorize
     cap_trie cap_trie_root;
@@ -2032,21 +2024,22 @@ namespace mbox {
       Key first_key = to_key(in.buf[0]);
 
       if (first_key == Key::ESC) {
-        // Escape sequence?
-        if (!(static_cast<bool>(input_mode & InputMode::ESC) && in.buf.size() == 1))
-          if (extract_esc_cap(event) || extract_esc_mouse(event)) return true;
-
         // Escape key?
-        if (static_cast<bool>(input_mode & InputMode::ESC)) {
+        if (in.buf.size() == 1) {
           event->type = EventType::KEY;
           event->ch = 0;
           event->key = Key::ESC;
           event->mod = Mod::NONE;
-          in.shift(1); // TODO: change naming?
+          in.shift(1);
           return true;
         }
 
-        event->mod = event->mod | Mod::ALT; // Recurse for alt key
+        // Escape sequence?
+        if (extract_esc_cap(event) || extract_esc_mouse(event))
+          return true;
+
+        // Alt+...
+        event->mod = event->mod | Mod::ALT;
         in.shift(1);
         return extract_event(event);
       }
@@ -2310,36 +2303,17 @@ namespace mbox {
       out.flush(ttyfd);
     }
 
-    InputMode get_input_mode() {
-      return input_mode;
-    }
-    // TODO: do I care enough?
-    // 1. `InputMode::ESC`: Singular `\x1b` is parsed as `Key::ESC`.
-    //
-    // 2. `InputMode::ALT`: Singular `\x1b` is parsed as `Mod::ALT`.
-    //
-    // `InputMode::MOUSE` can be |'d to either of the modes to start receiving `EventType::MOUSE` events.
-    // If neither of the main two modes were set, but the MOUSE mode was, `InputMode::ESC` is used.
-    // If you try to set both main modes, `InputMode::ESC` will be selected.
-    //
-    // The default input mode is `InputMode::ESC`. 
-    void set_input_mode(InputMode mode) {
-      InputMode esc_or_alt = InputMode::ESC | InputMode::ALT;
-      if (!static_cast<bool>(mode & esc_or_alt)) { // neither specified; flip on ESC
-        mode = mode | InputMode::ESC;
-      } else if ((mode & esc_or_alt) == esc_or_alt) { // both specified; flip off ALT
-        mode = static_cast<InputMode>(static_cast<uint8_t>(mode) & ~static_cast<uint8_t>(InputMode::ALT));
-      }
-
-      if (static_cast<bool>(mode & InputMode::MOUSE)) {
+    // Enable or disable the mouse integration
+    void capture_mouse(bool enable) {
+      if (enable && !mouse_mode) {
+        mouse_mode = true;
         out.puts(HardCap::ENTER_MOUSE);
         out.flush(ttyfd);
-      } else {
+      } else if (!enable && mouse_mode) {
+        mouse_mode = false;
         out.puts(HardCap::EXIT_MOUSE);
         out.flush(ttyfd);
       }
-
-      input_mode = mode;
     }
 
     // Does exactly what you think. Strings are interpreted as UTF-8.
