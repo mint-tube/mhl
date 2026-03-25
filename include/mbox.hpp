@@ -78,7 +78,7 @@ constexpr inline uint8_t from_key(Key i) { return static_cast<uint8_t>(i); }
 enum class Button { RELEASE, LEFT, RIGHT, MIDDLE, WHEEL_UP, WHEEL_DOWN };
 
 enum class Style : uint16_t {
-  DEFAULT = 0x0000,
+  NONE = 0x0000,
   BLACK = 0x0001,
   RED = 0x0002,
   GREEN = 0x0003,
@@ -112,57 +112,54 @@ constexpr inline Mod operator&(Mod left, Mod right) {
   return static_cast<Mod>(static_cast<uint8_t>(left) & static_cast<uint8_t>(right));
 }
 
-// TODO: implementation details?
-namespace Cap {
-  constexpr uint8_t F1 = 0;
-  constexpr uint8_t F2 = 1;
-  constexpr uint8_t F3 = 2;
-  constexpr uint8_t F4 = 3;
-  constexpr uint8_t F5 = 4;
-  constexpr uint8_t F6 = 5;
-  constexpr uint8_t F7 = 6;
-  constexpr uint8_t F8 = 7;
-  constexpr uint8_t F9 = 8;
-  constexpr uint8_t F10 = 9;
-  constexpr uint8_t F11 = 10;
-  constexpr uint8_t F12 = 11;
-  constexpr uint8_t INSERT = 12;
-  constexpr uint8_t DELETE = 13;
-  constexpr uint8_t HOME = 14;
-  constexpr uint8_t END = 15;
-  constexpr uint8_t PGUP = 16;
-  constexpr uint8_t PGDN = 17;
-  constexpr uint8_t ARROW_UP = 18;
-  constexpr uint8_t ARROW_DOWN = 19;
-  constexpr uint8_t ARROW_LEFT = 20;
-  constexpr uint8_t ARROW_RIGHT = 21;
-  constexpr uint8_t BACK_T = 22;
-  constexpr uint8_t _COUNT_KEYS = 23;
-  constexpr uint8_t ENTER_CA = 23;
-  constexpr uint8_t EXIT_CA = 24;
-  constexpr uint8_t SHOW_CURSOR = 25;
-  constexpr uint8_t HIDE_CURSOR = 26;
-  constexpr uint8_t CLEAR_SCREEN = 27;
-  constexpr uint8_t SGR0 = 28;
-  constexpr uint8_t UNDERLINE = 29;
-  constexpr uint8_t BOLD = 30;
-  constexpr uint8_t BLINK = 31;
-  constexpr uint8_t ITALIC = 32;
-  constexpr uint8_t REVERSE = 33;
-  constexpr uint8_t ENTER_KEYPAD = 34;
-  constexpr uint8_t EXIT_KEYPAD = 35;
-  constexpr uint8_t DIM = 36;
-  constexpr uint8_t INVISIBLE = 37;
-};
-
-namespace HardCap {
-  constexpr const char ENTER_MOUSE[] = "\x1b[?1000h\x1b[?1002h\x1b[?1015h\x1b[?1006h";
-  constexpr const char EXIT_MOUSE[] = "\x1b[?1006l\x1b[?1015l\x1b[?1002l\x1b[?1000l";
-}
-
-namespace mbox {
+namespace { // hide implementation details
+  namespace Cap {
+    constexpr uint8_t F1 = 0;
+    constexpr uint8_t F2 = 1;
+    constexpr uint8_t F3 = 2;
+    constexpr uint8_t F4 = 3;
+    constexpr uint8_t F5 = 4;
+    constexpr uint8_t F6 = 5;
+    constexpr uint8_t F7 = 6;
+    constexpr uint8_t F8 = 7;
+    constexpr uint8_t F9 = 8;
+    constexpr uint8_t F10 = 9;
+    constexpr uint8_t F11 = 10;
+    constexpr uint8_t F12 = 11;
+    constexpr uint8_t INSERT = 12;
+    constexpr uint8_t DELETE = 13;
+    constexpr uint8_t HOME = 14;
+    constexpr uint8_t END = 15;
+    constexpr uint8_t PGUP = 16;
+    constexpr uint8_t PGDN = 17;
+    constexpr uint8_t ARROW_UP = 18;
+    constexpr uint8_t ARROW_DOWN = 19;
+    constexpr uint8_t ARROW_LEFT = 20;
+    constexpr uint8_t ARROW_RIGHT = 21;
+    constexpr uint8_t BACK_T = 22;
+    constexpr uint8_t _COUNT_KEYS = 23;
+    constexpr uint8_t ENTER_CA = 23;
+    constexpr uint8_t EXIT_CA = 24;
+    constexpr uint8_t SHOW_CURSOR = 25;
+    constexpr uint8_t HIDE_CURSOR = 26;
+    constexpr uint8_t CLEAR_SCREEN = 27;
+    constexpr uint8_t SGR0 = 28;
+    constexpr uint8_t UNDERLINE = 29;
+    constexpr uint8_t BOLD = 30;
+    constexpr uint8_t BLINK = 31;
+    constexpr uint8_t ITALIC = 32;
+    constexpr uint8_t REVERSE = 33;
+    constexpr uint8_t ENTER_KEYPAD = 34;
+    constexpr uint8_t EXIT_KEYPAD = 35;
+    constexpr uint8_t DIM = 36;
+    constexpr uint8_t INVISIBLE = 37;
+  };
   constexpr size_t CAPSIZE = 38;
 
+  namespace HardCap {
+    constexpr const char ENTER_MOUSE[] = "\x1b[?1000h\x1b[?1002h\x1b[?1015h\x1b[?1006h";
+    constexpr const char EXIT_MOUSE[] = "\x1b[?1006l\x1b[?1015l\x1b[?1002l\x1b[?1000l";
+  }
 
   // A cell in a 2d grid representing the terminal screen.
   //
@@ -181,7 +178,7 @@ namespace mbox {
     Style bg;    // background attributes
 
     cell(char32_t ch, Style fg, Style bg) : ch(ch), fg(fg), bg(bg) {}
-    cell() : ch(' '), fg(Style::DEFAULT), bg(Style::DEFAULT) {}
+    cell() : ch(' '), fg(Style::NONE), bg(Style::NONE) {}
 
     bool operator==(const cell &right) const {
       return !(this->ch != right.ch || this->fg != right.fg || this->bg != right.bg);
@@ -191,7 +188,6 @@ namespace mbox {
     }
   };
 
-  // 2D vector of cells. Left-to-right then up-to-down
   struct cellbuf {
     std::vector<cell> cells;
     uint16_t width, height;
@@ -221,23 +217,6 @@ namespace mbox {
       width = new_width;
       height = new_height;
     }
-  };
-
-  // An incoming event from the tty.
-  // The following fields are relevant for given EventType:
-  // - `KEY`    - `key` or `ch`, `mod`
-  // - `RESIZE` - `width`, `height`
-  // - `MOUSE`  - `button`, `x`, `y`
-  struct event {
-    EventType type = EventType::NONE;
-    Mod mod = Mod::NONE;
-    Key key = Key::CTRL_TILDE;
-    Button button = Button::RELEASE;
-    char32_t ch = 0;
-    int32_t width = 0;
-    int32_t height = 0;
-    int32_t x = 0;
-    int32_t y = 0;
   };
 
   struct bytebuf {
@@ -581,7 +560,6 @@ namespace mbox {
     {"\x1b[1;7D",    Key::ARROW_LEFT,  Mod::CTRL | Mod::ALT               },
     {"\x1b[1;8D",    Key::ARROW_LEFT,  Mod::CTRL | Mod::ALT | Mod::SHIFT},
 
-    // xterm keys
     {"\x1b[1;2H",    Key::HOME,        Mod::SHIFT                           },
     {"\x1b[1;3H",    Key::HOME,        Mod::ALT                             },
     {"\x1b[1;4H",    Key::HOME,        Mod::ALT | Mod::SHIFT              },
@@ -726,7 +704,6 @@ namespace mbox {
     {"\x1b[24;7~",   Key::F12,         Mod::CTRL | Mod::ALT               },
     {"\x1b[24;8~",   Key::F12,         Mod::CTRL | Mod::ALT | Mod::SHIFT},
 
-    // rxvt arrows
     {"\x1b[a",       Key::ARROW_UP,    Mod::SHIFT                           },
     {"\x1b\x1b[A",   Key::ARROW_UP,    Mod::ALT                             },
     {"\x1b\x1b[a",   Key::ARROW_UP,    Mod::ALT | Mod::SHIFT              },
@@ -896,13 +873,11 @@ namespace mbox {
     {"\x1b[24@",     Key::F12,         Mod::CTRL | Mod::SHIFT             },
     {"\x1b[24$",     Key::F12,         Mod::SHIFT                           },
 
-    // linux console/putty arrows
     {"\x1b[A",       Key::ARROW_UP,    Mod::SHIFT                           },
     {"\x1b[B",       Key::ARROW_DOWN,  Mod::SHIFT                           },
     {"\x1b[C",       Key::ARROW_RIGHT, Mod::SHIFT                           },
     {"\x1b[D",       Key::ARROW_LEFT,  Mod::SHIFT                           },
 
-    // more putty arrows
     {"\x1bOA",       Key::ARROW_UP,    Mod::CTRL                            },
     {"\x1b\x1bOA",   Key::ARROW_UP,    Mod::CTRL | Mod::ALT               },
     {"\x1bOB",       Key::ARROW_DOWN,  Mod::CTRL                            },
@@ -1472,9 +1447,30 @@ namespace mbox {
     {0x0ffffe, 0x0fffff, -1}, {0x100000, 0x10fffd,  1}, {0x10fffe, 0x10ffff, -1},
   };
   static constexpr size_t WCWIDTH_TABLE_LENGTH = 2143;
+}
+
+
+namespace mbox {
+  // An incoming event from the tty.
+  // The following fields are relevant for given EventType:
+  // - `KEY`    - `key` or `ch`, `mod`
+  // - `RESIZE` - `width`, `height`
+  // - `MOUSE`  - `button`, `x`, `y`
+  struct event {
+    EventType type = EventType::NONE;
+    Mod mod = Mod::NONE;
+    Key key = Key::CTRL_TILDE;
+    Button button = Button::RELEASE;
+    char32_t ch = 0;
+    int32_t width = 0;
+    int32_t height = 0;
+    int32_t x = 0;
+    int32_t y = 0;
+  };
+
 
   // Check if given unicode codepoint is printable
-  bool char32_printable(char32_t ch) {
+  bool utf32_printable(char32_t ch) {
     if ((ch >= 0x20 && ch <= 0x7e) || (ch >= 0xa0 && ch <= 0xff)) {
       return true;
     } else if (ch <= 0xff) return false;
@@ -1586,8 +1582,8 @@ namespace mbox {
     int cursor_y = -1;
     int last_x = -1;
     int last_y = -1;
-    Style default_fg = Style::DEFAULT;
-    Style default_bg = Style::DEFAULT;
+    Style default_fg = Style::NONE;
+    Style default_bg = Style::NONE;
     Style last_fg = ~default_fg;
     Style last_bg = ~default_bg;
     bool mouse_mode = false;
@@ -1843,7 +1839,7 @@ namespace mbox {
       last_x = x;
       last_y = y;
 
-      if (!char32_printable(ch)) ch = 0xfffd; // replace non-printable codepoints with U+FFFD
+      if (!utf32_printable(ch)) ch = 0xfffd; // replace non-printable codepoints with U+FFFD
 
       char ch8[8];
       size_t ch8_len = utf32_to_utf8(ch8, ch);
@@ -1879,7 +1875,7 @@ namespace mbox {
 
       if (node->is_leaf) { // found an exact match
         event->type = EventType::KEY;
-        event->ch = -1;
+        event->ch = 0;
         event->key = node->key;
         event->mod = node->mod;
         in.shift(depth);
@@ -2292,7 +2288,7 @@ namespace mbox {
               // When w>1, we need to advance the cursor by more than 1,
               // thereby skipping some cells. Set these skipped cells to invalid.
               for (uint16_t i = 1; i < w; i++)
-                front.at(x + i, y) = cell(-1, Style::DEFAULT, Style::DEFAULT);
+                front.at(x + i, y) = cell(-1, Style::NONE, Style::NONE);
             }
           }
           x += w;
@@ -2335,7 +2331,7 @@ namespace mbox {
           x = orig_x;
           y += 1;
           continue;
-        } else if (char32_printable(ch)) {
+        } else if (utf32_printable(ch)) {
           w = utf32_width(ch);
         } else {
           ch = 0xfffd; // replace non-printable with U+FFFD
