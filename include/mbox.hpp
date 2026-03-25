@@ -165,13 +165,9 @@ namespace { // hide implementation details
   //
   // For non-single-width codepoints:
   //
-  // - `wcwidth(ch) <= 0`: force a single-width cell. Callers should avoid this if aiming to
-  // render text accurately. Callers should use `print*` to combine zero-width characters.
-  //
-  // - `wcwidth(ch) >= 2`: zero out the following `W-1` cells and skips sending them to the tty.
-  // So, e.g., if the caller sets `x=0,y=0` to a `W==2` codepoint, the caller's next set should be at
-  // `x=2,y=0`. Anything set at `x=1,y=0` will be ignored. If there are not enough columns remaining
-  // on the line to render `W` cells, spaces are sent instead.
+  // - `utf32_width(ch) <= 0`: force an empty cell. Use `print*` to properly combine zero-width characters.
+  // - `utf32_width(ch) >= 2`: zero out the shadowed cells and skip sending them to the tty.
+  //   So, if the caller sets `(0, 0)` to a `W == 2` codepoint, anything set at `(1, 0)` will be ignored.
   struct cell {
     char32_t ch; // a Unicode codepoint
     Style fg;    // foreground attributes
@@ -906,7 +902,7 @@ namespace { // hide implementation details
   static struct {
     char32_t range_start;
     char32_t range_end;
-    int width; // -1 means non-printable
+    int width; // -1 for non-printable
   } wcwidth_table[] = {
     // clang-format off
     {0x000001, 0x00001f, -1}, {0x000020, 0x00007e,  1}, {0x00007f, 0x00009f, -1}, {0x0000a0, 0x0002ff,  1},
@@ -1452,7 +1448,8 @@ namespace { // hide implementation details
 
 namespace mbox {
   // An incoming event from the tty.
-  // The following fields are relevant for given EventType:
+  //
+  // The following fields are relevant for each EventType:
   // - `KEY`    - `key` or `ch`, `mod`
   // - `RESIZE` - `width`, `height`
   // - `MOUSE`  - `button`, `x`, `y`
@@ -1469,7 +1466,7 @@ namespace mbox {
   };
 
 
-  // Check if given unicode codepoint is printable
+  // Check if a Unicode codepoint is printable
   bool utf32_printable(char32_t ch) {
     if ((ch >= 0x20 && ch <= 0x7e) || (ch >= 0xa0 && ch <= 0xff)) {
       return true;
@@ -1489,8 +1486,8 @@ namespace mbox {
 
     return false; // invalid codepoint
   }
+  // Check the width of a Unicode codepoint
   size_t utf32_width(char32_t ch) {
-    // 1-byte codepoints
     if ((ch >= 0x20 && ch <= 0x7e) || (ch >= 0xa0 && ch <= 0xff)) {
       return 1;
     } else if (ch <= 0xff) {
@@ -1519,7 +1516,7 @@ namespace mbox {
   // negative number indicating how many bytes were processed. `out` is left
   // unchanged.
   //
-  // Otherwise, return byte length of codepoint (1-6).
+  // @return The length of codepoint (1-6) or a negative number of bytes processed
   int utf8_to_utf32(char32_t *out, const char *c) {
     if (*c == '\0') return 0;
 
@@ -1537,8 +1534,8 @@ namespace mbox {
     *out = result;
     return static_cast<int>(len);
   }
-  // Convert UTF-32 codepoint `c` to UTF-8 null-terminated byte sequence at `&out`.
-  // Return the length of the codepoint (1-6).
+  // Convert UTF-32 codepoint `c` to UTF-8 null-terminated byte sequence.
+  // @return The length of the codepoint (1-6).
   size_t utf32_to_utf8(char *out, char32_t c) {
     uint8_t first;
     size_t len;
@@ -1572,6 +1569,8 @@ namespace mbox {
     return len;
   }
 
+  // This is the interface.
+  // Create a singleton of this class and use it's public methods.
   class term {
     static term *self_ptr;
     int ttyfd = -1;
@@ -2089,7 +2088,7 @@ namespace mbox {
     void init_cap_trie() {
       // Add caps from terminfo or built-in
       // Collisions are expected
-      // TODO: Reorder Cap::* to make it reasonable
+      // TODO: Reorder Cap::*?
       for (size_t i = 0; i < CAPSIZE; i++)
         cap_trie_add(caps[i], to_key(0xff - i), Mod::NONE);
 
@@ -2134,7 +2133,6 @@ namespace mbox {
         init_escape_codes();
         send_full_clear();
         update_term_size();
-
         back = cellbuf(width, height);
         front = cellbuf(width, height);
       } catch (std::runtime_error const &e) {
@@ -2182,8 +2180,8 @@ namespace mbox {
       back.at(x, y) = cell(ch, fg, bg);
     }
 
-    // Wait for an event up to `timeout_ms` milliseconds and write it to `event`.
-    // If no event occured within timeout, event.type == EventType::NONE.
+    // Wait for an event up to `timeout_ms` milliseconds.
+    // If no event occured, event.type == EventType::NONE.
     // @note Also see `poll_event`
     event peek_event(int timeout_ms) {
       event ev;
@@ -2346,7 +2344,7 @@ namespace mbox {
         str += abs(rv);
       }
     }
-    // Does exactly what you think. The comment for `print()` has some details.
+    // Does exactly what you think. Read `print()` for details.
     void printf(uint16_t x, uint16_t y, Style fg, Style bg, const char *fmt, ...) {
       char buf[4096];
       va_list vl;
@@ -2356,11 +2354,13 @@ namespace mbox {
       if (rv < 0) return;
       print(x, y, fg, bg, buf);
     }
-    // Send raw bytes to the terminal. Consider using `print`
+    // Send raw bytes to the terminal.
+    // @note Consider using `print`.
     void send(const char *buf, size_t nbuf) {
       out.nputs(buf, nbuf);
     }
-    // Send raw bytes to the terminal. Consider using `printf`
+    // Send raw bytes to the terminal. 
+    // @note Consider using `printf`.
     void sendf(const char *fmt, ...) {
       int rv;
       char buf[4096];
