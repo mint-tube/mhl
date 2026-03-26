@@ -1,10 +1,9 @@
 #pragma once
 #include <fstream>
-#include <cstring>
 #include <vector>
 #include <stdexcept>
+#include <cstring>
 #include <cstdint>
-#include <cerrno>
 #include <csignal>
 #include <cstdarg>
 #include <fcntl.h>
@@ -72,11 +71,12 @@ enum class Key {
   ARROW_RIGHT = (0xff - 21),
   BACK_TAB = (0xff - 22),
 };
-constexpr inline Key to_key(uint8_t i) { return static_cast<Key>(i); }
-constexpr inline uint8_t from_key(Key i) { return static_cast<uint8_t>(i); }
+constexpr Key to_key(uint8_t i) { return static_cast<Key>(i); }
+constexpr uint8_t from_key(Key i) { return static_cast<uint8_t>(i); }
 
-enum class Button { RELEASE, LEFT, RIGHT, MIDDLE, WHEEL_UP, WHEEL_DOWN };
+enum class Button { RELEASE = 0, LEFT = 1, RIGHT = 2, MIDDLE = 3, WHEEL_UP = 4, WHEEL_DOWN = 5 };
 
+// TODO: TrueColor
 enum class Style : uint16_t {
   NONE = 0x0000,
   BLACK = 0x0001,
@@ -92,27 +92,27 @@ enum class Style : uint16_t {
   UNDERLINE = 0x0200,
   REVERSE = 0x0400,
   ITALIC = 0x0800,
-  BRIGHT = 0x2000,
+  BRIGHT = 0x1000,
   BLINK = 0x2000,
   DIM = 0x4000,
 };
-constexpr inline Style to_style(uint16_t i) { return static_cast<Style>(i); }
-constexpr inline uint16_t from_style(Style i) { return static_cast<uint16_t>(i); }
-inline Style operator|(Style left, Style right) { return to_style(from_style(left) | from_style(right)); }
-inline Style operator&(Style left, Style right) { return to_style(from_style(left) & from_style(right)); }
-inline Style operator~(Style right) { return to_style(~from_style(right)); }
+constexpr Style to_style(uint16_t i) { return static_cast<Style>(i); }
+constexpr uint16_t from_style(Style i) { return static_cast<uint16_t>(i); }
+constexpr Style operator|(Style left, Style right) { return to_style(from_style(left) | from_style(right)); }
+constexpr Style operator&(Style left, Style right) { return to_style(from_style(left) & from_style(right)); }
+constexpr Style operator~(Style right) { return to_style(~from_style(right)); }
 
-enum class EventType { NONE, KEY, RESIZE, MOUSE };
+enum class EventType { NONE = 0, KEY = 1, RESIZE = 2, MOUSE = 3 };
 
 enum class Mod { NONE = 0, ALT = 1, CTRL = 2, SHIFT = 4, MOTION = 8 };
-constexpr inline Mod operator|(Mod left, Mod right) {
+constexpr Mod operator|(Mod left, Mod right) {
   return static_cast<Mod>(static_cast<uint8_t>(left) | static_cast<uint8_t>(right));
 }
-constexpr inline Mod operator&(Mod left, Mod right) {
+constexpr Mod operator&(Mod left, Mod right) {
   return static_cast<Mod>(static_cast<uint8_t>(left) & static_cast<uint8_t>(right));
 }
 
-namespace { // hide implementation details
+namespace { // implementation details
   namespace Cap {
     constexpr uint8_t F1 = 0;
     constexpr uint8_t F2 = 1;
@@ -219,9 +219,7 @@ namespace { // hide implementation details
     std::vector<char> buf;
 
     void nputs(const char *str, size_t n) {
-      if (!str || strlen(str) <= 0) return;
-      for (size_t i = 0; i < n; i++)
-        buf.push_back(str[i]);
+      for (size_t i = 0; i < n; i++) buf.push_back(str[i]);
     }
     void puts(const char *str) { nputs(str, (size_t)strlen(str)); }
     void put_number(char32_t num) {
@@ -229,7 +227,7 @@ namespace { // hide implementation details
       int i, l = 0;
       char ch;
       do {
-        str[l++] = (char)('0' + (num % 10));
+        str[l++] = '0' + (num % 10);
         num /= 10;
       } while (num);
       for (i = 0; i < l / 2; i++) {
@@ -1445,7 +1443,6 @@ namespace { // hide implementation details
   static constexpr size_t WCWIDTH_TABLE_LENGTH = 2143;
 }
 
-
 namespace mbox {
   // An incoming event from the tty.
   //
@@ -1464,7 +1461,6 @@ namespace mbox {
     int32_t x = 0;
     int32_t y = 0;
   };
-
 
   // Check if a Unicode codepoint is printable
   bool utf32_printable(char32_t ch) {
@@ -1486,7 +1482,7 @@ namespace mbox {
 
     return false; // invalid codepoint
   }
-  // Check the width of a Unicode codepoint
+  // Get the width of a Unicode codepoint
   size_t utf32_width(char32_t ch) {
     if ((ch >= 0x20 && ch <= 0x7e) || (ch >= 0xa0 && ch <= 0xff)) {
       return 1;
@@ -1597,7 +1593,7 @@ namespace mbox {
 
     void on_resize(int sig) {
       int saved_errno = errno;
-      write(resize_pipefd[1], &sig, sizeof(sig));  // игнорируем ошибку
+      write(resize_pipefd[1], &sig, sizeof(sig));  // ignore any errors
       errno = saved_errno;
     }
 
@@ -1631,7 +1627,7 @@ namespace mbox {
     }
 
     bool load_terminfo_from_path(std::string path, std::string term) {
-      // like /etc/terminfo/x/xterm
+      // as in /etc/terminfo/x/xterm
       std::ifstream fin(path + term[0] + term, std::ios::binary | std::ios::ate);
       if (!fin) return false;
 
@@ -1643,8 +1639,8 @@ namespace mbox {
 
       return true;
     }
+    // we live in a cruel world
     void load_terminfo() {
-      // we live in a cruel world
       char *term(getenv("TERM"));
       if (!term) throw std::runtime_error("$TERM is unset");
       char *terminfo = getenv("TERMINFO");
@@ -1674,8 +1670,8 @@ namespace mbox {
       if (offset + sizeof(int16_t) > terminfo.size())
         throw std::range_error("Terminfo index out of bounds");
       int16_t value;
-      std::memcpy(&value, terminfo.c_str() + offset, sizeof(int16_t));
-      return le16toh(value); // BE in 2026?
+      memcpy(&value, terminfo.c_str() + offset, sizeof(int16_t));
+      return value;
     }
     const char *get_terminfo_string(size_t p1, int16_t sz1, size_t p2, int16_t sz2, int16_t index) {
       if (index >= sz1) return ""; // as in `read_entry.c`
@@ -1685,7 +1681,7 @@ namespace mbox {
 
       if (table_offset < 0 || table_offset >= sz2) return ""; // as in `read_entry.c`
 
-      size_t str_offset = static_cast<size_t>(p2) + (int)table_offset;
+      size_t str_offset = p2 + table_offset;
       if (str_offset >= terminfo.size())
         throw std::runtime_error("Failed to load some caps from terminfo");
 
@@ -1824,7 +1820,7 @@ namespace mbox {
       last_fg = fg;
       last_bg = bg;
     }
-    void send_cursor_if(uint16_t x, uint16_t y) {
+    void move_cursor(uint16_t x, uint16_t y) {
       out.puts("\x1b[");
       out.put_number(y + 1);
       out.puts(";");
@@ -1833,7 +1829,7 @@ namespace mbox {
     }
     void send_char(uint16_t x, uint16_t y, char32_t ch) {
       if (last_x != x - 1 || last_y != y)
-        send_cursor_if(x, y);
+        move_cursor(x, y);
 
       last_x = x;
       last_y = y;
@@ -1847,7 +1843,7 @@ namespace mbox {
     void send_full_clear() {
       send_attr(default_fg, default_bg);
       out.puts(caps[Cap::CLEAR_SCREEN]);
-      send_cursor_if(cursor_x, cursor_y);
+      move_cursor(cursor_x, cursor_y);
       out.flush(ttyfd);
       last_x = -1;
       last_y = -1;
@@ -2086,8 +2082,7 @@ namespace mbox {
       }
     }
     void init_cap_trie() {
-      // Add caps from terminfo or built-in
-      // Collisions are expected
+      // Add caps from terminfo or use fallbacks. Collisions are expected.
       // TODO: Reorder Cap::*?
       for (size_t i = 0; i < CAPSIZE; i++)
         cap_trie_add(caps[i], to_key(0xff - i), Mod::NONE);
@@ -2104,6 +2099,7 @@ namespace mbox {
       // TODO: why not just signal()?
       struct sigaction sa;
       memset(&sa, 0, sizeof(sa));
+      sa.sa_flags = SA_RESTART;
       sa.sa_handler = term::handle_resize;
       if (sigaction(SIGWINCH, &sa, nullptr) != 0)
         throw std::runtime_error("`sigaction` failed: " + std::string(strerror(errno)));
@@ -2153,10 +2149,7 @@ namespace mbox {
       tcsetattr(ttyfd, TCSAFLUSH, &orig_tios);
       close(ttyfd);
 
-      struct sigaction sa;
-      memset(&sa, 0, sizeof(sa));
-      sa.sa_handler = SIG_DFL;
-      sigaction(SIGWINCH, &sa, nullptr);
+      sigaction(SIGWINCH, 0, nullptr);
       if (resize_pipefd[0] >= 0) close(resize_pipefd[0]);
       if (resize_pipefd[1] >= 0) close(resize_pipefd[1]);
       self_ptr = nullptr;
@@ -2248,17 +2241,13 @@ namespace mbox {
     }
 
     void set_cursor(uint16_t x, uint16_t y) {
-      if (cursor_x == -1) {
-        out.puts(caps[Cap::SHOW_CURSOR]);
-      }
-      send_cursor_if(x, y);
+      if (cursor_x == -1) out.puts(caps[Cap::SHOW_CURSOR]);
+      move_cursor(x, y);
       cursor_x = x;
       cursor_y = y;
     }
     void hide_cursor() {
-      if (cursor_x >= 0) {
-        out.puts(caps[Cap::HIDE_CURSOR]);
-      }
+      if (cursor_x >= 0) out.puts(caps[Cap::HIDE_CURSOR]);
       cursor_x = -1;
     }
 
@@ -2293,7 +2282,7 @@ namespace mbox {
         }
       }
 
-      send_cursor_if(cursor_x, cursor_y);
+      move_cursor(cursor_x, cursor_y);
       out.flush(ttyfd);
     }
 
@@ -2346,7 +2335,7 @@ namespace mbox {
     }
     // Does exactly what you think. Read `print()` for details.
     void printf(uint16_t x, uint16_t y, Style fg, Style bg, const char *fmt, ...) {
-      char buf[4096];
+      char buf[8192];
       va_list vl;
       va_start(vl, fmt);
       int rv = vsnprintf(buf, sizeof(buf), fmt, vl);
@@ -2372,7 +2361,7 @@ namespace mbox {
       send(buf, static_cast<size_t>(rv));
     }
 
-    // DO NOT USE THIS.
+    // Do not use this.
     static void handle_resize(int sig) {
       self_ptr->on_resize(sig);
     }
