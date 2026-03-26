@@ -154,109 +154,12 @@ namespace { // implementation details
     constexpr uint8_t DIM = 36;
     constexpr uint8_t INVISIBLE = 37;
   };
-  constexpr size_t CAPSIZE = 38;
+  constexpr size_t CAPSIZE = 38; // pun intended
 
   namespace HardCap {
     constexpr const char ENTER_MOUSE[] = "\x1b[?1000h\x1b[?1002h\x1b[?1015h\x1b[?1006h";
     constexpr const char EXIT_MOUSE[] = "\x1b[?1006l\x1b[?1015l\x1b[?1002l\x1b[?1000l";
   }
-
-  // A cell in a 2d grid representing the terminal screen.
-  //
-  // For non-single-width codepoints:
-  //
-  // - `utf32_width(ch) <= 0`: force an empty cell. Use `print*` to properly combine zero-width characters.
-  // - `utf32_width(ch) >= 2`: zero out the shadowed cells and skip sending them to the tty.
-  //   So, if the caller sets `(0, 0)` to a `W == 2` codepoint, anything set at `(1, 0)` will be ignored.
-  struct cell {
-    char32_t ch; // a Unicode codepoint
-    Style fg;    // foreground attributes
-    Style bg;    // background attributes
-
-    cell(char32_t ch, Style fg, Style bg) : ch(ch), fg(fg), bg(bg) {}
-    cell() : ch(' '), fg(Style::NONE), bg(Style::NONE) {}
-
-    bool operator==(const cell &right) const {
-      return !(this->ch != right.ch || this->fg != right.fg || this->bg != right.bg);
-    }
-    bool operator!=(const cell &right) const {
-      return (this->ch != right.ch || this->fg != right.fg || this->bg != right.bg);
-    }
-  };
-
-  struct cellbuf {
-    std::vector<cell> cells;
-    uint16_t width, height;
-
-    cellbuf(uint16_t width, uint16_t height) : width(width), height(height) {
-      cells.resize(height * width);
-    }
-
-    cell &at(uint16_t x, uint16_t y) {
-      return this->cells[y * width + x];
-    }
-    bool in_bounds(uint16_t x, uint16_t y) {
-      return !(x >= this->width || y >= this->height);
-    }
-    void clear(Style fg, Style bg) {
-      for (cell &c : cells) c = cell(U' ', fg, bg);
-    }
-    void resize(uint16_t new_width, uint16_t new_height) {
-      std::vector<cell> new_cells(new_height * new_width);
-
-      uint16_t min_width = std::min(width, new_width);
-      uint16_t min_height = std::min(height, new_height);
-      for (uint16_t y = 0; y < min_height; ++y)
-        std::copy(&cells[y * width], &cells[y * width] + min_width, &new_cells[y * new_width]);
-
-      cells = std::move(new_cells);
-      width = new_width;
-      height = new_height;
-    }
-  };
-
-  struct bytebuf {
-    std::vector<char> buf;
-
-    void nputs(const char *str, size_t n) {
-      for (size_t i = 0; i < n; i++) buf.push_back(str[i]);
-    }
-    void puts(const char *str) { nputs(str, (size_t)strlen(str)); }
-    void put_number(char32_t num) {
-      char str[32];
-      int i, l = 0;
-      char ch;
-      do {
-        str[l++] = '0' + (num % 10);
-        num /= 10;
-      } while (num);
-      for (i = 0; i < l / 2; i++) {
-        ch = str[i];
-        str[i] = str[l - 1 - i];
-        str[l - 1 - i] = ch;
-      }
-
-      nputs(str, l);
-    }
-    void shift(size_t n) {
-      if (n >= buf.size()) buf.clear();
-      else buf.erase(buf.begin(), buf.begin() + n);
-    }
-    void flush(int fd) {
-      if (buf.size() == 0) return;
-      if (write(fd, buf.data(), buf.size()) == -1)
-        throw std::runtime_error("`write` failed - can't flush the bytebuf");
-      buf.clear();
-    }
-  };
-
-  struct cap_trie {
-    char ch;
-    std::vector<cap_trie> children;
-    bool is_leaf;
-    Key key;
-    Mod mod;
-  };
 
   static const int16_t terminfo_cap_indexes[] = {
     66,  // kf1 (Cap::F1)
@@ -1444,6 +1347,103 @@ namespace { // implementation details
 }
 
 namespace mbox {
+  // A cell in a 2d grid representing the terminal screen.
+  //
+  // For non-single-width codepoints:
+  // - `utf32_width(ch) <= 0`: force an empty cell. Use `print*` to properly combine zero-width characters.
+  // - `utf32_width(ch) >= 2`: zero out the shadowed cells and skip sending them to the tty.
+  //   So, if the caller sets `(0, 0)` to a `W == 2` codepoint, anything set at `(1, 0)` will be ignored.
+  struct cell {
+    char32_t ch; // a Unicode codepoint
+    Style fg;    // foreground attributes
+    Style bg;    // background attributes
+
+    cell(char32_t ch, Style fg, Style bg) : ch(ch), fg(fg), bg(bg) {}
+    cell() : ch(' '), fg(Style::NONE), bg(Style::NONE) {}
+
+    bool operator==(const cell &right) const {
+      return !(this->ch != right.ch || this->fg != right.fg || this->bg != right.bg);
+    }
+    bool operator!=(const cell &right) const {
+      return (this->ch != right.ch || this->fg != right.fg || this->bg != right.bg);
+    }
+  };
+
+  struct cellbuf {
+    std::vector<cell> cells;
+    uint16_t width, height;
+
+    cellbuf(uint16_t width, uint16_t height) : width(width), height(height) {
+      cells.resize(height * width);
+    }
+
+    cell &at(uint16_t x, uint16_t y) {
+      return this->cells[y * width + x];
+    }
+    bool in_bounds(uint16_t x, uint16_t y) {
+      return !(x >= this->width || y >= this->height);
+    }
+    void clear(Style fg, Style bg) {
+      for (cell &c : cells) c = cell(U' ', fg, bg);
+    }
+    void resize(uint16_t new_width, uint16_t new_height) {
+      std::vector<cell> new_cells(new_height * new_width);
+
+      uint16_t min_width = std::min(width, new_width);
+      uint16_t min_height = std::min(height, new_height);
+      for (uint16_t y = 0; y < min_height; ++y)
+        std::copy(&cells[y * width], &cells[y * width] + min_width, &new_cells[y * new_width]);
+
+      cells = std::move(new_cells);
+      width = new_width;
+      height = new_height;
+    }
+  };
+
+  struct bytebuf {
+    std::vector<char> buf;
+
+    void nputs(const char *str, size_t n) {
+      for (size_t i = 0; i < n; i++) buf.push_back(str[i]);
+    }
+    void puts(const char *str) { nputs(str, (size_t)strlen(str)); }
+    void put_number(char32_t num) {
+      char str[32];
+      int i, l = 0;
+      char ch;
+      do {
+        str[l++] = '0' + (num % 10);
+        num /= 10;
+      } while (num);
+      for (i = 0; i < l / 2; i++) {
+        ch = str[i];
+        str[i] = str[l - 1 - i];
+        str[l - 1 - i] = ch;
+      }
+
+      nputs(str, l);
+    }
+    void shift(size_t n) {
+      if (n >= buf.size()) buf.clear();
+      else buf.erase(buf.begin(), buf.begin() + n);
+    }
+    void flush(int fd) {
+      if (buf.size() == 0) return;
+      if (write(fd, buf.data(), buf.size()) == -1)
+        throw std::runtime_error("`write` failed - can't flush the bytebuf");
+      buf.clear();
+    }
+  };
+
+  struct cap_trie {
+    char ch;
+    std::vector<cap_trie> children;
+    bool is_leaf;
+    Key key;
+    Mod mod;
+  };
+
+
   // An incoming event from the tty.
   //
   // The following fields are relevant for each EventType:
@@ -1813,7 +1813,7 @@ namespace mbox {
         if (!fg_is_default && !bg_is_default)
           out.puts(";");
         if (!bg_is_default)
-          out.put_number((from_style(bg & Style::BRIGHT) ? 100 : 40) + from_style(bg) & 0x0f - 1);
+          out.put_number((from_style(bg & Style::BRIGHT) ? 100 : 40) + (from_style(bg) & 0x0f) - 1);
         out.puts("m");
       }
 
