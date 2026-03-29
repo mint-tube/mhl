@@ -1784,12 +1784,6 @@ namespace mbox {
       width = rw;
       height = rh;
     }
-    void resize_cellbufs() {
-      back.resize(width, height);
-      front.resize(width, height);
-      front.clear(default_fg, default_bg);
-      send_full_clear();
-    }
 
     void send_attr(Style fg, Style bg) {
       if (fg == last_fg && bg == last_bg) return;
@@ -2093,16 +2087,8 @@ namespace mbox {
     }
     void init_resize_handler() {
       self_ptr = this;
-      if (pipe(resize_pipefd) != 0)
-        throw std::runtime_error("`pipe` failed: " + std::string(strerror(errno)));
-
-      // TODO: why not just signal()?
-      struct sigaction sa;
-      memset(&sa, 0, sizeof(sa));
-      sa.sa_flags = SA_RESTART;
-      sa.sa_handler = term::handle_resize;
-      if (sigaction(SIGWINCH, &sa, nullptr) != 0)
-        throw std::runtime_error("`sigaction` failed: " + std::string(strerror(errno)));
+      if (pipe(resize_pipefd)) throw std::runtime_error("`pipe` failed: " + std::string(strerror(errno)));
+      signal(SIGWINCH, term::handle_resize);
     }
     void init_escape_codes() {
       out.puts(caps[Cap::ENTER_CA]);
@@ -2115,8 +2101,7 @@ namespace mbox {
     // @throws `std::logic_error` - an instance of `term` already exists.
     // @throws `std::runtime_error` - an unexpected error occured.
     term() {
-      if (self_ptr != nullptr)
-        throw std::logic_error("Only one instance of `mbox::term` can exist at the same time");
+      if (self_ptr) throw std::logic_error("Only one instance of `mbox::term` can exist simultaneously");
 
       ttyfd = open("/dev/tty", O_RDWR);
       if (ttyfd < 0) throw std::runtime_error("Failed to open /dev/tty");
@@ -2194,8 +2179,7 @@ namespace mbox {
 
         int select_rv;
         do {
-          select_rv = select(maxfd + 1, &fds, nullptr, nullptr,
-            (timeout_ms < 0) ? nullptr : &tv);
+          select_rv = select(maxfd + 1, &fds, nullptr, nullptr, (timeout_ms < 0) ? nullptr : &tv);
         } while (select_rv < 0 && errno == EINTR);
 
         if (select_rv < 0) {
@@ -2219,10 +2203,14 @@ namespace mbox {
 
         if (resize_has_events) {
           int _;
-          read(resize_pipefd[0], &_, sizeof(int));
+          read(resize_pipefd[0], &_, sizeof(_));
 
           update_term_size();
-          resize_cellbufs();
+          back.resize(width, height);
+          front.resize(width, height);
+          front.clear(default_fg, default_bg);
+          send_full_clear();
+
           ev.type = EventType::RESIZE;
           ev.width = width;
           ev.height = height;

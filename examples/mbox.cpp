@@ -9,7 +9,7 @@ int main() {
       "привет from mbox!");                                          // full support of UTF-8
     term.printf(0, y++, Style::NONE, Style::NONE,
       "width=%d height=%d", term.get_width(), term.get_height());    // string formatting
-    term.printf(0, y++, Style::BLUE | Style::BRIGHT, Style::NONE, // text attributes
+    term.printf(0, y++, Style::BLUE | Style::BRIGHT, Style::NONE,    // text attributes
       "PRESS <ESC> to quit");
     term.printf(0, y++, Style::BLUE | Style::BRIGHT, Style::NONE,
       "PRESS <TAB> to toggle mouse capture");
