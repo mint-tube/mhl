@@ -1,14 +1,11 @@
 {
   "C_Cpp.default.cppStandard": "c++17",
-  "C_Cpp.default.cStandard": "c17",
-  "C_Cpp.vcFormat.space.beforeConstructorColon": true,
-  "C_Cpp.vcFormat.space.beforeInheritanceColon": true,
   "C_Cpp.vcFormat.space.pointerReferenceAlignment": "right",
-  "C_Cpp.vcFormat.space.removeAroundUnaryOperator": true,
-  "C_Cpp.vcFormat.space.removeAroundMemberOperators": true,
-  "C_Cpp.vcFormat.space.removeBeforeSemicolon": true,
   "files.exclude": {
     ".editorconfig": true,
-    ".gitignore": true
+    ".gitignore": true,
+    ".vscode": false,
+    ".git": true,
+    ".build": true
   },
 }
