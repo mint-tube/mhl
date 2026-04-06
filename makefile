@@ -1,5 +1,5 @@
 CXX ?= clang++
-CXXFLAGS = -std=c++17 -DDEBUG -Wall -Wextra -Wpedantic -Werror -I./include
+CXXFLAGS = -std=c++17 -O1 -DDEBUG -Wall -Wextra -Wpedantic -Werror -I./include
 
 SRCS = $(wildcard examples/*.cpp)
 NAMES = $(notdir $(basename $(SRCS)))

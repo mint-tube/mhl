@@ -161,7 +161,7 @@ namespace { // implementation details
     constexpr const char EXIT_MOUSE[] = "\x1b[?1006l\x1b[?1015l\x1b[?1002l\x1b[?1000l";
   }
 
-  static const int16_t terminfo_cap_indexes[] = {
+  const int16_t terminfo_cap_indexes[] = {
     66,  // kf1 (Cap::F1)
     68,  // kf2 (Cap::F2)
     69,  // kf3 (Cap::F3)
@@ -202,7 +202,7 @@ namespace { // implementation details
     32,  // invis (Cap::INVISIBLE)
   };
 
-  static const char *xterm_caps[] = {
+  const char *xterm_caps[] = {
     "\033OP",                  // kf1 (Cap::F1)
     "\033OQ",                  // kf2 (Cap::F2)
     "\033OR",                  // kf3 (Cap::F3)
@@ -242,7 +242,7 @@ namespace { // implementation details
     "\033[2m",                 // dim (Cap::DIM)
     "\033[8m",                 // invis (Cap::INVISIBLE)
   };
-  static const char *linux_caps[] = {
+  const char *linux_caps[] = {
     "\033[[A",           // kf1 (Cap::F1)
     "\033[[B",           // kf2 (Cap::F2)
     "\033[[C",           // kf3 (Cap::F3)
@@ -282,7 +282,7 @@ namespace { // implementation details
     "\033[2m",           // dim (Cap::DIM)
     "",                  // invis (Cap::INVISIBLE)
   };
-  static const char *screen_caps[] = {
+  const char *screen_caps[] = {
     "\033OP",            // kf1 (Cap::F1)
     "\033OQ",            // kf2 (Cap::F2)
     "\033OR",            // kf3 (Cap::F3)
@@ -322,7 +322,7 @@ namespace { // implementation details
     "\033[2m",           // dim (Cap::DIM)
     "",                  // invis (Cap::INVISIBLE)
   };
-  static const char *rxvt_256color_caps[] = {
+  const char *rxvt_256color_caps[] = {
     "\033[11~",              // kf1 (Cap::F1)
     "\033[12~",              // kf2 (Cap::F2)
     "\033[13~",              // kf3 (Cap::F3)
@@ -362,7 +362,7 @@ namespace { // implementation details
     "",                      // dim (Cap::DIM)
     "",                      // invis (Cap::INVISIBLE)
   };
-  static const char *rxvt_unicode_caps[] = {
+  const char *rxvt_unicode_caps[] = {
     "\033[11~",           // kf1 (Cap::F1)
     "\033[12~",           // kf2 (Cap::F2)
     "\033[13~",           // kf3 (Cap::F3)
@@ -403,7 +403,7 @@ namespace { // implementation details
     "",                   // invis (Cap::INVISIBLE)
   };
 
-  static struct {
+  struct {
     const char *name;
     const char **caps;
   } builtin_terms[] = {
@@ -419,7 +419,7 @@ namespace { // implementation details
       {nullptr,          nullptr           },
   };
 
-  static struct {
+  struct {
     const char *cap;
     const Key key;
     const Mod mod;
@@ -787,7 +787,7 @@ namespace { // implementation details
     {nullptr,        Key::DELETE,      Mod::NONE                          },
   };
 
-  static const uint8_t utf8_length[256] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+  const uint8_t utf8_length[256] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
@@ -798,12 +798,12 @@ namespace { // implementation details
     1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
     2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
     3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 1, 1};
-  static const uint8_t utf8_mask[6] = {0x7f, 0x1f, 0x0f, 0x07, 0x03, 0x01};
+  const uint8_t utf8_mask[6] = {0x7f, 0x1f, 0x0f, 0x07, 0x03, 0x01};
 
-  static struct {
+  struct {
     char32_t range_start;
     char32_t range_end;
-    int width; // -1 for non-printable
+    int width; // -1 for non-printable codepoints
   } wcwidth_table[] = {
     // clang-format off
     {0x000001, 0x00001f, -1}, {0x000020, 0x00007e,  1}, {0x00007f, 0x00009f, -1}, {0x0000a0, 0x0002ff,  1},
@@ -1343,7 +1343,7 @@ namespace { // implementation details
     {0x0e0080, 0x0e00ff, -1}, {0x0e0100, 0x0e01ef,  0}, {0x0e01f0, 0x0effff, -1}, {0x0f0000, 0x0ffffd,  1},
     {0x0ffffe, 0x0fffff, -1}, {0x100000, 0x10fffd,  1}, {0x10fffe, 0x10ffff, -1},
   };
-  static constexpr size_t WCWIDTH_TABLE_LENGTH = 2143;
+  constexpr size_t WCWIDTH_TABLE_LENGTH = 2143;
 }
 
 namespace mbox {
@@ -1565,8 +1565,6 @@ namespace mbox {
     return len;
   }
 
-  // This is the interface.
-  // Create a singleton of this class and use it's public methods.
   class term {
     static term *self_ptr;
     int ttyfd = -1;
@@ -1602,7 +1600,6 @@ namespace mbox {
 
       for (const char &ch : cap) {
         cap_trie *next = nullptr;
-
         for (cap_trie &child : node->children)
           if (child.ch == ch) {
             next = &child;
@@ -1627,7 +1624,7 @@ namespace mbox {
     }
 
     bool load_terminfo_from_path(std::string path, std::string term) {
-      // as in /etc/terminfo/x/xterm
+      // like /etc/terminfo/x/xterm
       std::ifstream fin(path + term[0] + term, std::ios::binary | std::ios::ate);
       if (!fin) return false;
 
@@ -1643,10 +1640,13 @@ namespace mbox {
     void load_terminfo() {
       char *term(getenv("TERM"));
       if (!term) throw std::runtime_error("$TERM is unset");
+
       char *terminfo = getenv("TERMINFO");
       if (!terminfo && load_terminfo_from_path(terminfo, term)) return;
+
       char *home(getenv("HOME"));
       if (!home && load_terminfo_from_path(std::string(home) + "/.terminfo", term)) return;
+
       char *dirs(getenv("TERMINFO_DIRS"));
       size_t start = 0, end = 0;
       while ((end = std::string(dirs).find(':', start)) != std::string::npos) {
@@ -1664,7 +1664,7 @@ namespace mbox {
         || load_terminfo_from_path("/usr/share/lib/terminfo", term)
         || load_terminfo_from_path("/lib/terminfo", term)) return;
 
-      throw std::runtime_error("Can't find terminfo");
+      throw std::runtime_error("Can't find terminfo"); // fallback to built-in caps
     }
     int16_t get_terminfo_int16(size_t offset) {
       if (offset + sizeof(int16_t) > terminfo.size())
@@ -2077,7 +2077,6 @@ namespace mbox {
     }
     void init_cap_trie() {
       // Add caps from terminfo or use fallbacks. Collisions are expected.
-      // TODO: Reorder Cap::*?
       for (size_t i = 0; i < CAPSIZE; i++)
         cap_trie_add(caps[i], to_key(0xff - i), Mod::NONE);
 
@@ -2153,14 +2152,14 @@ namespace mbox {
       default_bg = bg;
     }
     // Set cell contents in the back buffer at the specified position. 
-    // @note Also see `set_cell`.
+    // @note Consider `printf`.
     void set_cell(uint16_t x, uint16_t y, Style fg, Style bg, char32_t ch) {
       back.at(x, y) = cell(ch, fg, bg);
     }
 
     // Wait for an event up to `timeout_ms` milliseconds.
     // If no event occured, event.type == EventType::NONE.
-    // @note Also see `poll_event`
+    // @note Consider `poll_event`
     event peek_event(int timeout_ms) {
       event ev;
       if (extract_event(&ev)) return ev;
@@ -2223,11 +2222,13 @@ namespace mbox {
       return ev;
     }
     // Wait for an event indefinetely.
-    // @note Also see `peek_event`
+    // @note Consider `peek_event`
     event poll_event() {
       return peek_event(-1);
     }
 
+    // Move the cursor to (x, y)
+    // @note Consider `hide_cursor`
     void set_cursor(uint16_t x, uint16_t y) {
       if (cursor_x == -1) out.puts(caps[Cap::SHOW_CURSOR]);
       move_cursor(x, y);
@@ -2290,7 +2291,7 @@ namespace mbox {
     // Does exactly what you think. Strings are interpreted as UTF-8.
     // Non-printable characters and invalid UTF-8 byte sequences are replaced with U+FFFD.
     // Newlines will move cursor to the initial column of the next row.
-    // @note Also see `set_cell`.
+    // @note Consider `printf` and `set_cell`.
     void print(uint16_t x, uint16_t y, Style fg, Style bg, const char *str) {
       if (!back.in_bounds(x, y)) return; // nothing to do
 
@@ -2332,21 +2333,19 @@ namespace mbox {
       print(x, y, fg, bg, buf);
     }
     // Send raw bytes to the terminal.
-    // @note Consider using `print`.
+    // @note Consider `print`.
     void send(const char *buf, size_t nbuf) {
       out.nputs(buf, nbuf);
     }
     // Send raw bytes to the terminal. 
-    // @note Consider using `printf`.
+    // @note Consider `printf`.
     void sendf(const char *fmt, ...) {
-      int rv;
       char buf[4096];
       va_list vl;
       va_start(vl, fmt);
-      rv = vsnprintf(buf, sizeof(buf), fmt, vl);
+      int rv = vsnprintf(buf, sizeof(buf), fmt, vl);
       va_end(vl);
-      if (rv < 0) return;
-      send(buf, static_cast<size_t>(rv));
+      if (rv > 0) send(buf, static_cast<size_t>(rv));
     }
 
     // Do not use this.
