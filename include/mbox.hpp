@@ -157,8 +157,8 @@ namespace { // implementation details
   constexpr size_t CAPSIZE = 38; // pun intended
 
   namespace HardCap {
-    constexpr const char ENTER_MOUSE[] = "\x1b[?1000h\x1b[?1002h\x1b[?1015h\x1b[?1006h";
-    constexpr const char EXIT_MOUSE[] = "\x1b[?1006l\x1b[?1015l\x1b[?1002l\x1b[?1000l";
+    constexpr const char ENTER_MOUSE[] = "\x1b[?1000h\x1b[?1015h\x1b[?1006h";
+    constexpr const char EXIT_MOUSE[] = "\x1b[?1006l\x1b[?1015l\x1b[?1000l";
   }
 
   const int16_t terminfo_cap_indexes[] = {
