@@ -1642,17 +1642,10 @@ namespace mbox {
       if (!term) throw std::runtime_error("$TERM is unset");
 
       char *terminfo = getenv("TERMINFO");
-      if (!terminfo && load_terminfo_from_path(terminfo, term)) return;
+      if (terminfo && load_terminfo_from_path(terminfo, term)) return;
 
       char *home(getenv("HOME"));
-      if (!home && load_terminfo_from_path(std::string(home) + "/.terminfo", term)) return;
-
-      char *dirs(getenv("TERMINFO_DIRS"));
-      size_t start = 0, end = 0;
-      while ((end = std::string(dirs).find(':', start)) != std::string::npos) {
-        if (load_terminfo_from_path(std::string(dirs).substr(start, end - start), term)) return;
-        start = end + 1;
-      }
+      if (home && load_terminfo_from_path(std::string(home) + "/.terminfo", term)) return;
 
       // give up and try to guess
       if (load_terminfo_from_path("/usr/local/etc/terminfo", term)
