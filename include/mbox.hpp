@@ -1848,28 +1848,28 @@ namespace mbox {
             next = &child;
             break;
           }
-        if (!next) break; // invalid cap
+        if (!next) break; // Invalid cap
 
         node = next;
         depth++;
         if (node->is_leaf && node->children.empty()) break;
       }
 
-      if (node->is_leaf) { // found an exact match
+      if (node->is_leaf) { // Found an exact match
         event->type = EventType::KEY;
         event->ch = 0;
         event->key = node->key;
         event->mod = node->mod;
         in.shift(depth);
         return true;
-      } else if (!node->children.empty() && depth == in.buf.size()) // need more input
-        return true;
+      }
 
-      return false; // absolutely not a valid cap
+      if (!node->children.empty() && depth == in.buf.size()) // Need more input
+        return false;
+
+      return false; // Absolutely not a valid cap
     }
     bool extract_esc_mouse(event *event) {
-      size_t buf_shift = 0;
-
       // Bail if not enough to determine type
       if (in.buf.size() < 2) {
         return true;
@@ -1919,7 +1919,7 @@ namespace mbox {
           event->y = in.buf[5] - 0x21;
 
           // Eat 6 bytes
-          buf_shift = 6;
+          in.shift(6);
           break;
         }
         case MouseType::TYPE_1006:
@@ -1930,21 +1930,18 @@ namespace mbox {
           char trail = ' ';
 
           size_t i = 2;
-          if (type == MouseType::TYPE_1006) ++i; // skip '<'
+          if (type == MouseType::TYPE_1006) i = 3; // Skip '<'
 
           // Parse %d;%d;%d[mM] into `num`
           while (i < in.buf.size() && num_i < 3) {
             char c = in.buf[i];
-            if (c >= '0' && c <= '9') {
-              // Digit
+            if (c >= '0' && c <= '9') { // Digit
               if (cur_num == -1) cur_num = 0;
               cur_num *= 10;
               cur_num += static_cast<int>(c - '0');
             } else if (cur_num != -1 &&
-              ((num_i < 2 && c == ';') ||
-                (num_i == 2 && (c == 'm' || c == 'M')))) {
-              // We're at a semi-colon, 'm', or 'M'
-              // and we have a number
+              ((num_i < 2 && c == ';') || (num_i == 2 && (c == 'm' || c == 'M')))) {
+              // We're at a semi-colon, 'm', or 'M' and we have a number
               num[num_i] = cur_num;
               ++num_i;
               cur_num = -1;
@@ -1955,10 +1952,9 @@ namespace mbox {
             }
             ++i;
           }
+          if (num[2] == -1) return false; // Need more input
 
-          if (num[2] == -1) return true; // If we didn't get to the 3rd number, we need more
-
-          buf_shift = i; // We have a valid mouse event, eat `i` bytes from the buffer
+          in.shift(i); // We have a valid mouse event, eat `i` bytes from the buffer
 
           if (type == MouseType::TYPE_1015) num[0] -= 0x20;
 
@@ -1992,9 +1988,7 @@ namespace mbox {
         }
       }
 
-      if (buf_shift > 0) in.shift(buf_shift);
       event->type = EventType::MOUSE;
-
       return true;
     }
     bool extract_event(event *event) {
@@ -2013,8 +2007,7 @@ namespace mbox {
         }
 
         // Escape sequence?
-        if (extract_esc_cap(event) || extract_esc_mouse(event))
-          return true;
+        if (extract_esc_cap(event) || extract_esc_mouse(event)) return true;
 
         // Alt+...
         event->mod = event->mod | Mod::ALT;
@@ -2041,8 +2034,7 @@ namespace mbox {
         return true;
       }
 
-      // Need more input
-      return false;
+      return false; // Need more input
     }
 
     void init_term_attrs() {
