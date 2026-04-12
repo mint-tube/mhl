@@ -1,6 +1,7 @@
 #pragma once
 #include <fstream>
 #include <vector>
+#include <string>
 #include <stdexcept>
 #include <cstring>
 #include <cstdint>
@@ -1407,7 +1408,7 @@ namespace mbox {
       for (size_t i = 0; i < n; i++) buf.push_back(str[i]);
     }
     void puts(const char *str) { nputs(str, (size_t)strlen(str)); }
-    void put_number(char32_t num) {
+    void put_number(unsigned num) {
       char str[32];
       int i, l = 0;
       char ch;
@@ -2304,12 +2305,12 @@ namespace mbox {
             set_cell(x, y, fg, bg, ch);
           x += w;
         }
-        str += abs(rv);
+        str += std::abs(rv);
       }
     }
     // Does exactly what you think. Read `print()` for details.
     void printf(uint16_t x, uint16_t y, Style fg, Style bg, const char *fmt, ...) {
-      char buf[8192];
+      char buf[16384];
       va_list vl;
       va_start(vl, fmt);
       int rv = vsnprintf(buf, sizeof(buf), fmt, vl);
@@ -2325,7 +2326,7 @@ namespace mbox {
     // Send raw bytes to the terminal. 
     // @note Consider `printf`.
     void sendf(const char *fmt, ...) {
-      char buf[4096];
+      char buf[8192];
       va_list vl;
       va_start(vl, fmt);
       int rv = vsnprintf(buf, sizeof(buf), fmt, vl);
