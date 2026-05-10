@@ -2338,6 +2338,13 @@ namespace mbox {
     static void handle_resize(int sig) {
       self_ptr->on_resize(sig);
     }
+
+    // Get a reference to the singleton.
+    // @throws `std::logic_error` - instance not created yet.
+    static term &instance() {
+      if (!self_ptr) throw std::logic_error("term instance not created yet");
+      return *self_ptr;
+    }
   };
   term *term::self_ptr = nullptr;
 }
