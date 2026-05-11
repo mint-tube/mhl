@@ -1438,12 +1438,11 @@ namespace mbox {
 
   struct cap_trie {
     char ch;
-    std::vector<cap_trie> children;
     bool is_leaf;
+    std::vector<cap_trie> children;
     Key key;
     Mod mod;
   };
-
 
   // An incoming event from the tty.
   //
@@ -1608,7 +1607,7 @@ namespace mbox {
           }
 
         if (!next) {
-          cap_trie created;
+          cap_trie created{ch, false, {}, to_key(0), Mod::NONE};
           created.ch = ch;
           node->children.push_back(created);
           next = &node->children.back();
@@ -1703,9 +1702,8 @@ namespace mbox {
       // legacy ints are 16-bit, extended ints are 32-bit
       const size_t bytes_per_int = (magic_number == 01036) ? 4 : 2;
 
-      // Between the boolean section and the number section, a null byte will be
-      // inserted, if necessary, to ensure that the number section begins on an
-      // even byte
+      // Between the boolean section and the number section, a null byte may be
+      // inserted to ensure that the number section begins on an even byte
       const size_t align_offset = ((nbytes_names + nbytes_bools) % 2 != 0) ? 1 : 0;
 
       const size_t pos_str_offsets =
@@ -1716,7 +1714,7 @@ namespace mbox {
         (num_ints * bytes_per_int); // length of numbers section
 
       // length of string offsets table
-      const size_t pos_str_table = pos_str_offsets + (num_offsets * sizeof(int16_t));
+      const size_t pos_str_table = pos_str_offsets + num_offsets * sizeof(int16_t);
 
       // Load caps
       for (size_t i = 0; i < CAPSIZE; i++)
