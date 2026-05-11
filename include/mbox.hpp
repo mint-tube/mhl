@@ -2119,7 +2119,7 @@ namespace mbox {
       tcsetattr(ttyfd, TCSAFLUSH, &orig_tios);
       close(ttyfd);
 
-      sigaction(SIGWINCH, 0, nullptr);
+      sigaction(SIGWINCH, nullptr, nullptr);
       if (resize_pipefd[0] >= 0) close(resize_pipefd[0]);
       if (resize_pipefd[1] >= 0) close(resize_pipefd[1]);
       self_ptr = nullptr;
