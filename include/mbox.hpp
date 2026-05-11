@@ -1626,7 +1626,7 @@ namespace mbox {
 
     bool load_terminfo_from_path(std::string path, std::string term) {
       // like /etc/terminfo/x/xterm
-      std::ifstream fin(path + term[0] + term, std::ios::binary | std::ios::ate);
+      std::ifstream fin(path + "/" + term[0] + "/" + term, std::ios::binary | std::ios::ate);
       if (!fin) return false;
 
       std::streamsize size = fin.tellg();
@@ -1642,8 +1642,8 @@ namespace mbox {
       char *term(getenv("TERM"));
       if (!term) throw std::runtime_error("$TERM is unset");
 
-      char *terminfo = getenv("TERMINFO");
-      if (terminfo && load_terminfo_from_path(terminfo, term)) return;
+      char *terminfo_path = getenv("TERMINFO");
+      if (terminfo_path && load_terminfo_from_path(terminfo_path, term)) return;
 
       char *home(getenv("HOME"));
       if (home && load_terminfo_from_path(std::string(home) + "/.terminfo", term)) return;
