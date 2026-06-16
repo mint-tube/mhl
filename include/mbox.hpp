@@ -2121,6 +2121,11 @@ namespace mbox {
     uint16_t get_width() { return width; }
     // Return the height of the terminal.
     uint16_t get_height() { return height; }
+    // Get cell contents at (x, y).
+    // @note Returns the last *set* character, not the *visible* one.
+    char32_t get_cell(uint16_t x, uint16_t y) {
+      return back.at(x, y).ch;
+    }
 
     // Clear the back buffer using default attributes or ones set with `set_default_attrs`.
     void clear() { back.clear(default_fg, default_bg); }
