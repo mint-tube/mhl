@@ -108,7 +108,8 @@ namespace mbox {
     return static_cast<Mod>(static_cast<uint8_t>(left) & static_cast<uint8_t>(right));
   }
 
-  namespace { // implementation details
+  // Implementation details.
+  namespace {
     namespace Cap {
       constexpr uint8_t F1 = 0;
       constexpr uint8_t F2 = 1;
@@ -1563,24 +1564,19 @@ namespace mbox {
     static term *self_ptr;
     int ttyfd = -1;
     int resize_pipefd[2] = {-1, -1};
-    uint16_t width = 0;
-    uint16_t height = 0;
-    int cursor_x = -1;
-    int cursor_y = -1;
-    int last_x = -1;
-    int last_y = -1;
+    uint16_t width = 0, height = 0;
+    int cursor_x = -1, cursor_y = -1;
+    int last_x = -1, last_y = -1;
     uint16_t default_fg = style::NONE;
     uint16_t default_bg = style::NONE;
     uint16_t last_fg = ~default_fg;
     uint16_t last_bg = ~default_bg;
     bool mouse_mode = false;
     std::string terminfo;
-    const char *caps[CAPSIZE] = {}; // TODO: vectorize
+    const char *caps[CAPSIZE] = {};
     cap_trie cap_trie_root;
-    bytebuf in;
-    bytebuf out;
-    cellbuf back{0, 0};  // uniform initialization
-    cellbuf front{0, 0}; // uniform initialization
+    bytebuf in, out;
+    cellbuf back{0, 0}, front{0, 0};
     termios orig_tios = {};
 
     void on_resize(int sig) {
@@ -2218,6 +2214,7 @@ namespace mbox {
       cursor_x = x;
       cursor_y = y;
     }
+    // Hide the cursor if it was moved by set_cursor().
     void hide_cursor() {
       if (cursor_x >= 0) out.puts(caps[Cap::HIDE_CURSOR]);
       cursor_x = -1;
