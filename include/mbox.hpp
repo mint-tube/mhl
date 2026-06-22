@@ -2124,7 +2124,7 @@ namespace mbox {
     // Clear the back buffer using default attributes or ones set with `set_default_attrs`.
     void clear() { back.clear(default_fg, default_bg); }
     // Set the default Style of cells for `clear()` and some other methods
-    void set_default_Style(uint16_t fg, uint16_t bg) {
+    void set_default_style(uint16_t fg, uint16_t bg) {
       default_fg = fg;
       default_bg = bg;
     }
