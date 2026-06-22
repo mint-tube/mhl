@@ -1,7 +1,7 @@
 #include "../include/mbox.hpp"
 
 using namespace mbox;
-using namespace mbox::style;
+using namespace mbox::Style;
 
 int main() {
   {
@@ -10,7 +10,7 @@ int main() {
 
     term.printf(0, y++, 0, 0, "привет from mbox!");                  // full support of UTF-8
     term.printf(0, y++, 0, 0, "width=%d height=%d", term.get_width(), term.get_height());
-    term.printf(0, y++, BLUE | BRIGHT, 0, "PRESS <ESC> to quit");    // text attributes from mbox::style
+    term.printf(0, y++, BLUE | BRIGHT, 0, "PRESS <ESC> to quit");    // text attributes from mbox::Style
     term.printf(0, y++, BLUE | BRIGHT, 0, "PRESS <TAB> to toggle mouse capture");
     term.flush();                                                    // flush the buffer manually
     y++;

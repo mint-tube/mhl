@@ -13,6 +13,7 @@ namespace mlog {
   inline bool timestamps = true;
   inline bool muted = false;
 
+  // Delete the file. Will fail silently if it is in use.
   inline void clear(const std::string &path) { std::remove(path.c_str()); }
 
   inline const std::string level_to_string(Level lvl) {

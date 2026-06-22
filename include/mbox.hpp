@@ -14,7 +14,7 @@
 #include <termios.h>
 
 namespace mbox {
-  enum class Key {
+  enum class Key : uint8_t {
     CTRL_TILDE = 0x00, CTRL_2 = 0x00,
     CTRL_A = 0x01,
     CTRL_B = 0x02,
@@ -73,12 +73,10 @@ namespace mbox {
     ARROW_RIGHT = (0xff - 21),
     BACK_TAB = (0xff - 22),
   };
-  constexpr Key to_key(uint8_t i) { return static_cast<Key>(i); }
-  constexpr uint8_t from_key(Key i) { return static_cast<uint8_t>(i); }
 
   enum class Button { RELEASE = 0, LEFT = 1, RIGHT = 2, MIDDLE = 3, WHEEL_UP = 4, WHEEL_DOWN = 5 };
 
-  namespace style {
+  namespace Style {
     constexpr uint16_t NONE = 0x0000;
     constexpr uint16_t BLACK = 0x0001;
     constexpr uint16_t RED = 0x0002;
@@ -1355,7 +1353,7 @@ namespace mbox {
     uint16_t bg;    // background attributes
 
     cell(char32_t ch, uint16_t fg, uint16_t bg) : ch(ch), fg(fg), bg(bg) {}
-    cell() : ch(' '), fg(style::NONE), bg(style::NONE) {}
+    cell() : ch(' '), fg(Style::NONE), bg(Style::NONE) {}
 
     bool operator==(const cell &right) const {
       return !(this->ch != right.ch || this->fg != right.fg || this->bg != right.bg);
@@ -1567,8 +1565,8 @@ namespace mbox {
     uint16_t width = 0, height = 0;
     int cursor_x = -1, cursor_y = -1;
     int last_x = -1, last_y = -1;
-    uint16_t default_fg = style::NONE;
-    uint16_t default_bg = style::NONE;
+    uint16_t default_fg = Style::NONE;
+    uint16_t default_bg = Style::NONE;
     uint16_t last_fg = ~default_fg;
     uint16_t last_bg = ~default_bg;
     bool mouse_mode = false;
@@ -1597,7 +1595,7 @@ namespace mbox {
           }
 
         if (!next) {
-          cap_trie created{ch, false, {}, to_key(0), Mod::NONE};
+          cap_trie created{ch, false, {}, (Key)0, Mod::NONE};
           created.ch = ch;
           node->children.push_back(created);
           next = &node->children.back();
@@ -1771,12 +1769,12 @@ namespace mbox {
       if (fg == last_fg && bg == last_bg) return;
 
       out.puts(caps[Cap::SGR0]);
-      if (fg & style::BOLD) out.puts(caps[Cap::BOLD]);
-      if (fg & style::BLINK) out.puts(caps[Cap::BLINK]);
-      if (fg & style::UNDERLINE) out.puts(caps[Cap::UNDERLINE]);
-      if (fg & style::ITALIC) out.puts(caps[Cap::ITALIC]);
-      if (fg & style::DIM) out.puts(caps[Cap::DIM]);
-      if ((fg & style::REVERSE) | (bg & style::REVERSE)) out.puts(caps[Cap::REVERSE]);
+      if (fg & Style::BOLD) out.puts(caps[Cap::BOLD]);
+      if (fg & Style::BLINK) out.puts(caps[Cap::BLINK]);
+      if (fg & Style::UNDERLINE) out.puts(caps[Cap::UNDERLINE]);
+      if (fg & Style::ITALIC) out.puts(caps[Cap::ITALIC]);
+      if (fg & Style::DIM) out.puts(caps[Cap::DIM]);
+      if ((fg & Style::REVERSE) | (bg & Style::REVERSE)) out.puts(caps[Cap::REVERSE]);
 
       bool fg_is_default = !(fg & 0xff);
       bool bg_is_default = !(bg & 0xff);
@@ -1785,11 +1783,11 @@ namespace mbox {
       if (!fg_is_default || !bg_is_default) {
         out.puts("\x1b[");
         if (!fg_is_default)
-          out.put_number((fg & style::BRIGHT ? 90 : 30) + (fg & 0x0f) - 1);
+          out.put_number((fg & Style::BRIGHT ? 90 : 30) + (fg & 0x0f) - 1);
         if (!fg_is_default && !bg_is_default)
           out.puts(";");
         if (!bg_is_default)
-          out.put_number((bg & style::BRIGHT ? 100 : 40) + (bg & 0x0f) - 1);
+          out.put_number((bg & Style::BRIGHT ? 100 : 40) + (bg & 0x0f) - 1);
         out.puts("m");
       }
 
@@ -1982,7 +1980,7 @@ namespace mbox {
     }
     bool extract_event(event *event) {
       if (in.buf.empty()) return false;
-      Key first_key = to_key(in.buf[0]);
+      Key first_key = (Key)in.buf[0];
 
       if (first_key == Key::ESC) {
         // Escape key?
@@ -2015,11 +2013,11 @@ namespace mbox {
       }
 
       // UTF-8?
-      if (in.buf.size() >= utf8_length[from_key(first_key)]) {
+      if (in.buf.size() >= utf8_length[(uint8_t)first_key]) {
         event->type = EventType::KEY;
         utf8_to_utf32(&event->ch, in.buf.data());
-        event->key = to_key(0);
-        in.shift(utf8_length[from_key(first_key)]);
+        event->key = (Key)0;
+        in.shift(utf8_length[(uint8_t)first_key]);
         return true;
       }
 
@@ -2052,7 +2050,7 @@ namespace mbox {
     void init_cap_trie() {
       // Add caps from terminfo or use fallbacks. Collisions are expected.
       for (size_t i = 0; i < CAPSIZE; i++)
-        cap_trie_add(caps[i], to_key(0xff - i), Mod::NONE);
+        cap_trie_add(caps[i], (Key)(0xff - i), Mod::NONE);
 
       // Add built-in mod caps
       for (int i = 0; builtin_mod_caps[i].cap != nullptr; i++)
@@ -2125,8 +2123,8 @@ namespace mbox {
 
     // Clear the back buffer using default attributes or ones set with `set_default_attrs`.
     void clear() { back.clear(default_fg, default_bg); }
-    // Set the default style of cells for `clear()` and some other methods
-    void set_default_style(uint16_t fg, uint16_t bg) {
+    // Set the default Style of cells for `clear()` and some other methods
+    void set_default_Style(uint16_t fg, uint16_t bg) {
       default_fg = fg;
       default_bg = bg;
     }
@@ -2244,7 +2242,7 @@ namespace mbox {
               // When w>1, we need to advance the cursor by more than 1,
               // thereby skipping some cells. Set these skipped cells to invalid.
               for (uint16_t i = 1; i < w; i++)
-                front.at(x + i, y) = cell(-1, style::NONE, style::NONE);
+                front.at(x + i, y) = cell(-1, Style::NONE, Style::NONE);
             }
           }
           x += w;
