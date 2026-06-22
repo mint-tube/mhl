@@ -2339,6 +2339,9 @@ namespace mbox {
     }
   };
   term *term::self_ptr = nullptr;
+
+  // Ring the terminal bell. `putchar(7)` will not work in the raw mode.
+  void beep() { system("tput bel"); }
 }
 
 /*
