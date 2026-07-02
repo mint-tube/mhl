@@ -40,10 +40,8 @@ namespace mcfg {
             auto &fields = section->second;
             auto field = std::find_if(fields.begin(), fields.end(),
               [&](const auto &fp) { return fp.first == new_field.first; });
-            if (field == fields.end()) [[likely]]
-              fields.push_back(new_field);
-            else
-              field->second = new_field.second;
+            if (field == fields.end()) fields.push_back(new_field);
+            else field->second = new_field.second;
           }
         } else {
           sections.emplace_back(current_section_name, new_fields);
@@ -54,20 +52,17 @@ namespace mcfg {
       for (std::string line; std::getline(fin, line); lineno++) {
         line = strip(line);
 
-        if (line.empty() || line[0] == '#' || line[0] == ';') {
-          continue;
-        } else if (line[0] == '[') {
+        if (line.empty() || line[0] == '#' || line[0] == ';')  continue;
+        else if (line[0] == '[') {
           merge_block();  // store previous section
           size_t rsb_pos = line.find_last_of(']');
           if (rsb_pos == std::string::npos)
-            throw std::invalid_argument(path.string() + ":" + std::to_string(lineno) + ": '[' was never closed.");
+            throw std::invalid_argument(path.string() + ":" + std::to_string(lineno) + ": malformed section header");
           current_section_name = strip(line.substr(1, rsb_pos - 1));
         } else {
           size_t equal_pos = line.find_first_of('=');
-          if (equal_pos == std::string::npos)
-            throw std::invalid_argument(path.string() + ":" + std::to_string(lineno) + ": no '=' after field's name.");
-          if (equal_pos == 0)
-            throw std::invalid_argument(path.string() + ":" + std::to_string(lineno) + ": field has no name");
+          if (equal_pos == std::string::npos || equal_pos == 0)
+            throw std::invalid_argument(path.string() + ":" + std::to_string(lineno) + ": malformed field");
           std::string name = strip(line.substr(0, equal_pos));
           std::string value = strip(line.substr(equal_pos + 1));
 

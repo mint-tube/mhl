@@ -2,7 +2,7 @@
 
 ## Usage
 Download whatever headers you need and include them wherever you need. That's it. \
-Headers may or may not use features from C++17. \
+Headers do not use features from C++20 or newer. \
 The libraries are only tested on Linux. `mbox` does not work on Windows.
 
 ## Documentation
