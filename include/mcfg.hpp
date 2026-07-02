@@ -80,7 +80,7 @@ namespace mcfg {
 
     // Return the value of a given field.
     // If no such section or field exists - return an empty string.
-    const std::string get(const std::string &section_name, const std::string &field_name) const {
+    const std::string get(std::string_view section_name, std::string_view field_name) const {
       auto section = std::find_if(sections.begin(), sections.end(),
         [&](const auto &p) { return p.first == section_name; });
       if (section == sections.end()) return "";
@@ -123,7 +123,7 @@ namespace mcfg {
     }
 
     // Get a list of fields in a given section
-    std::vector<std::string> list_fields(const std::string &section_name) const {
+    std::vector<std::string> list_fields(std::string_view section_name) const {
       auto section = std::find_if(sections.begin(), sections.end(),
         [&](const auto &p) { return p.first == section_name; });
       if (section == sections.end()) return {};
@@ -134,12 +134,12 @@ namespace mcfg {
       return keys;
     }
 
-    bool has_section(const std::string &section_name) const {
+    bool has_section(std::string_view section_name) const {
       return std::find_if(sections.begin(), sections.end(),
         [&](const auto &p) { return p.first == section_name; }) != sections.end();
     }
 
-    bool has_field(const std::string &section_name, const std::string &field_name) const {
+    bool has_field(std::string_view section_name, std::string_view field_name) const {
       auto section = std::find_if(sections.begin(), sections.end(),
         [&](const auto &p) { return p.first == section_name; });
       if (section == sections.end()) return false;
@@ -149,7 +149,7 @@ namespace mcfg {
     }
 
     // Erase a section and all its fields.
-    void erase_section(const std::string &section_name) {
+    void erase_section(std::string_view section_name) {
       auto it = std::find_if(sections.begin(), sections.end(),
         [&](const auto &p) { return p.first == section_name; });
       if (it != sections.end()) sections.erase(it);
@@ -157,7 +157,7 @@ namespace mcfg {
 
     // Erase a field.
     // If it was the only field in the section - erase the section as well.
-    void erase(const std::string &section_name, const std::string &field_name) {
+    void erase(std::string_view section_name, std::string_view field_name) {
       auto section = std::find_if(sections.begin(), sections.end(),
         [&](const auto &p) { return p.first == section_name; });
       if (section == sections.end()) return;
