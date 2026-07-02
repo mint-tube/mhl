@@ -1348,12 +1348,12 @@ namespace mbox {
   // - `utf32_width(ch) >= 2`: zero out the shadowed cells and skip sending them to the tty.
   //   So, if the caller sets `(0, 0)` to a `W == 2` codepoint, anything set at `(1, 0)` will be ignored.
   struct cell {
-    char32_t ch; // a Unicode codepoint
     uint16_t fg;    // foreground attributes
     uint16_t bg;    // background attributes
+    char32_t ch; // a Unicode codepoint
 
-    cell(char32_t ch, uint16_t fg, uint16_t bg) : ch(ch), fg(fg), bg(bg) {}
-    cell() : ch(' '), fg(Style::NONE), bg(Style::NONE) {}
+    cell(uint16_t fg, uint16_t bg, char32_t ch) : fg(fg), bg(bg), ch(ch) {}
+    cell() : fg(0), bg(0), ch(' ') {}
 
     bool operator==(const cell &right) const {
       return !(this->ch != right.ch || this->fg != right.fg || this->bg != right.bg);
@@ -2115,11 +2115,6 @@ namespace mbox {
     uint16_t get_width() { return width; }
     // Return the height of the terminal.
     uint16_t get_height() { return height; }
-    // Get cell contents at (x, y).
-    // @note Returns the last *set* character, not the *visible* one.
-    char32_t get_cell(uint16_t x, uint16_t y) {
-      return back.at(x, y).ch;
-    }
 
     // Clear the back buffer using default attributes or ones set with `set_default_attrs`.
     void clear() { back.clear(default_fg, default_bg); }
@@ -2130,9 +2125,13 @@ namespace mbox {
     }
     // Set cell contents in the back buffer at the specified position. 
     // @note Consider `printf`.
-    void set_cell(uint16_t x, uint16_t y, uint16_t fg, uint16_t bg, char32_t ch) {
-      back.at(x, y) = cell(ch, fg, bg);
-    }
+    void set_cell(uint16_t x, uint16_t y, uint16_t fg, uint16_t bg, char32_t ch) { back.at(x, y) = cell(fg, bg, ch); }
+    // Set cell contents in the back buffer at the specified position. 
+    // @note Consider `printf`.
+    void set_cell(uint16_t x, uint16_t y, cell c) { back.at(x, y) = c; }
+    // Get cell contents in the back buffer at the specified position. 
+    // @note Returns the last *set* character, not the *visible* one.
+    cell get_cell(uint16_t x, uint16_t y) { return back.at(x, y); }
 
     // Wait for an event up to `timeout_ms` milliseconds.
     // If no event occured, event.type == EventType::NONE.
