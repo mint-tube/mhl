@@ -91,9 +91,13 @@ namespace mbox {
     constexpr uint16_t UNDERLINE = 0x0200;
     constexpr uint16_t REVERSE = 0x0400;
     constexpr uint16_t ITALIC = 0x0800; // May have no visible effect
-    constexpr uint16_t BRIGHT = 0x1000; // May look the same as BOLD in older terminals
+    constexpr uint16_t BRIGHT = 0x1000; // Doesn't work with RGB colors
     constexpr uint16_t DIM = 0x4000;    // May have no visible effect
-  };
+
+    // Build a color from the 6×6×6 RGB cube (each param in 0..5).
+    // Example: `term.print(0, y++, rgb_color(5, 2, 1) | BOLD, 0, "Bold orange text");`
+    constexpr uint16_t rgb_color(uint8_t r, uint8_t g, uint8_t b) { return 0x8000 | (16 + (r * 36 + g * 6 + b)); }
+  }
 
   enum class EventType { NONE = 0, KEY = 1, RESIZE = 2, MOUSE = 3 };
 
@@ -1340,6 +1344,15 @@ namespace mbox {
     constexpr size_t WCWIDTH_TABLE_LENGTH = 2143;
   }
 
+  // Check whether the current terminal supports the 256 color range.
+  inline bool supports_rgb() {
+    const char *term = getenv("TERM");
+    if (term && strstr(term, "256color")) return true;
+    const char *colorterm = getenv("COLORTERM");
+    if (colorterm && (!strcmp(colorterm, "truecolor") || !strcmp(colorterm, "24bit"))) return true;
+    return false;
+  }
+
   // A cell in a 2d grid representing the terminal screen.
   //
   // For non-single-width codepoints:
@@ -1578,7 +1591,7 @@ namespace mbox {
 
     void on_resize(int sig) {
       int saved_errno = errno;
-      sig = write(resize_pipefd[1], &sig, sizeof(sig));  // ignore result
+      sig = write(resize_pipefd[1], &sig, sizeof(sig));
       errno = saved_errno;
     }
 
@@ -1634,7 +1647,6 @@ namespace mbox {
       char *home(getenv("HOME"));
       if (home && load_terminfo_from_path(std::string(home) + "/.terminfo", term)) return;
 
-      // give up and try to guess
       if (load_terminfo_from_path("/usr/local/etc/terminfo", term)
         || load_terminfo_from_path("/usr/local/share/terminfo", term)
         || load_terminfo_from_path("/usr/local/lib/terminfo", term)
@@ -1644,7 +1656,7 @@ namespace mbox {
         || load_terminfo_from_path("/usr/share/lib/terminfo", term)
         || load_terminfo_from_path("/lib/terminfo", term)) return;
 
-      throw std::runtime_error("Can't find terminfo"); // fallback to built-in caps
+      throw std::runtime_error("Couldn't locate terminfo");
     }
     int16_t get_terminfo_int16(size_t offset) {
       if (offset + sizeof(int16_t) > terminfo.size())
@@ -1694,11 +1706,11 @@ namespace mbox {
       const size_t align_offset = ((nbytes_names + nbytes_bools) % 2 != 0) ? 1 : 0;
 
       const size_t pos_str_offsets =
-        12                          // header (12 bytes)
-        + nbytes_names              // length of names section
-        + nbytes_bools              // length of boolean section
-        + align_offset +
-        (num_ints * bytes_per_int); // length of numbers section
+        12
+        + nbytes_names
+        + nbytes_bools
+        + align_offset
+        + (num_ints * bytes_per_int);
 
       // length of string offsets table
       const size_t pos_str_table = pos_str_offsets + num_offsets * sizeof(int16_t);
@@ -1772,26 +1784,43 @@ namespace mbox {
       if (fg & Style::UNDERLINE) out.puts(caps[Cap::UNDERLINE]);
       if (fg & Style::ITALIC) out.puts(caps[Cap::ITALIC]);
       if (fg & Style::DIM) out.puts(caps[Cap::DIM]);
-      if ((fg & Style::REVERSE) | (bg & Style::REVERSE)) out.puts(caps[Cap::REVERSE]);
+      if ((fg | bg) & Style::REVERSE) out.puts(caps[Cap::REVERSE]);
 
-      bool fg_is_default = !(fg & 0xff);
-      bool bg_is_default = !(bg & 0xff);
+      // Not a 256-color and not an 8-color
+      bool fg_is_default = !(fg & 0x80ff);
+      bool bg_is_default = !(bg & 0x80ff);
 
       // Minus 1 is because colors are 1-indexed.
       if (!fg_is_default || !bg_is_default) {
         out.puts("\x1b[");
-        if (!fg_is_default)
-          out.put_number((fg & Style::BRIGHT ? 90 : 30) + (fg & 0x0f) - 1);
-        if (!fg_is_default && !bg_is_default)
-          out.puts(";");
-        if (!bg_is_default)
-          out.put_number((bg & Style::BRIGHT ? 100 : 40) + (bg & 0x0f) - 1);
+
+        if (!fg_is_default) {
+          if (fg & 0x8000) { // 256-color
+            out.puts("38;5;");
+            out.put_number(fg & 0xff);
+          } else {           // 8-color
+            out.put_number((fg & Style::BRIGHT ? 90 : 30) + (fg & 0x0f) - 1);
+          }
+        }
+
+        if (!(fg_is_default || bg_is_default)) out.puts(";");
+
+        if (!bg_is_default) {
+          if (bg & 0x8000) { // 256-color
+            out.puts("48;5;");
+            out.put_number(bg & 0xff);
+          } else {           // 8-color
+            out.put_number((bg & Style::BRIGHT ? 100 : 40) + (bg & 0x0f) - 1);
+          }
+        }
+
         out.puts("m");
       }
 
       last_fg = fg;
       last_bg = bg;
     }
+
     void move_cursor(uint16_t x, uint16_t y) {
       out.puts("\x1b[");
       out.put_number(y + 1);
@@ -1806,7 +1835,7 @@ namespace mbox {
       last_x = x;
       last_y = y;
 
-      if (!utf32_printable(ch)) ch = 0xfffd; // replace non-printable codepoints with U+FFFD
+      if (!utf32_printable(ch)) ch = 0xfffd;
 
       char ch8[8];
       size_t ch8_len = utf32_to_utf8(ch8, ch);
@@ -1852,7 +1881,7 @@ namespace mbox {
       if (!node->children.empty() && depth == in.buf.size()) // Need more input
         return false;
 
-      return false; // Absolutely not a valid cap
+      return false; // What is this even
     }
     bool extract_esc_mouse(event *event) {
       // Bail if not enough to determine type
@@ -1864,7 +1893,6 @@ namespace mbox {
         return true;
       }
 
-      // Deduce type of mouse from 3rd byte
       enum class MouseType { TYPE_VT200, TYPE_1006, TYPE_1015 };
       MouseType type;
       if (in.buf[2] == 'M') {
@@ -1903,7 +1931,6 @@ namespace mbox {
           event->x = in.buf[4] - 0x21;
           event->y = in.buf[5] - 0x21;
 
-          // Eat 6 bytes
           in.shift(6);
           break;
         }
@@ -1931,10 +1958,8 @@ namespace mbox {
               ++num_i;
               cur_num = -1;
               trail = c;
-            } else {
-              // Something else
-              return false;
-            }
+            } else return false;
+
             ++i;
           }
           if (num[2] == -1) return false; // Need more input
@@ -2121,12 +2146,13 @@ namespace mbox {
       default_fg = fg;
       default_bg = bg;
     }
-    // Set cell contents in the back buffer at the specified position. 
-    // @note Consider `printf`.
-    void set_cell(uint16_t x, uint16_t y, uint16_t fg, uint16_t bg, char32_t ch) { back.at(x, y) = cell(fg, bg, ch); }
+
     // Set cell contents in the back buffer at the specified position. 
     // @note Consider `printf`.
     void set_cell(uint16_t x, uint16_t y, cell c) { back.at(x, y) = c; }
+    // Set cell contents in the back buffer at the specified position. 
+    // @note Consider `printf`.
+    void set_cell(uint16_t x, uint16_t y, uint16_t fg, uint16_t bg, char32_t ch) { back.at(x, y) = cell(fg, bg, ch); }
     // Get cell contents in the back buffer at the specified position. 
     // @note Returns the last *set* character, not the *visible* one.
     cell get_cell(uint16_t x, uint16_t y) { return back.at(x, y); }
@@ -2176,7 +2202,7 @@ namespace mbox {
 
         if (resize_has_events) {
           int _;
-          _ = read(resize_pipefd[0], &_, sizeof(_)); // ignore result
+          _ = read(resize_pipefd[0], &_, sizeof(_));
 
           update_term_size();
           back.resize(width, height);
@@ -2239,6 +2265,7 @@ namespace mbox {
               // When w>1, we need to advance the cursor by more than 1,
               // thereby skipping some cells. Set these skipped cells to invalid.
               for (uint16_t i = 1; i < w; i++)
+                // TODO: 0xFFFD??
                 front.at(x + i, y) = cell(-1, Style::NONE, Style::NONE);
             }
           }
@@ -2268,7 +2295,7 @@ namespace mbox {
     // Newlines will move cursor to the initial column of the next row.
     // @note Consider `printf` and `set_cell`.
     void print(uint16_t x, uint16_t y, uint16_t fg, uint16_t bg, const char *str) {
-      if (!back.in_bounds(x, y)) return; // nothing to do
+      if (!back.in_bounds(x, y)) return;
 
       uint16_t orig_x = x;
       while (*str) {
