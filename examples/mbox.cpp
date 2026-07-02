@@ -1,7 +1,7 @@
 #include "../include/mbox.hpp"
 
 using namespace mbox;
-using namespace mbox::Style;
+using namespace mbox::style;
 
 int main() {
   {
@@ -31,7 +31,8 @@ int main() {
         term.capture_mouse(mouse_mode = !mouse_mode);
 
         term.set_cell(0, y, 0, 0, U'🔶');                             // write to any cell
-        uint16_t color = supports_rgb() ? rgb_color(5, 2, 1) : RED;   // 256 colors!!!
+        // uint32_t color = supports_rgb() ? rgb(250, 111, 19) : RED;  // rgb!!!
+        uint32_t color = supports_rgb() ? rgb("fa6f13") : RED;  // rgb!!!
         term.printf(3, y++, color | BOLD, 0, "Toggled mouse input");
       }
 

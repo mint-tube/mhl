@@ -76,27 +76,49 @@ namespace mbox {
 
   enum class Button { RELEASE = 0, LEFT = 1, RIGHT = 2, MIDDLE = 3, WHEEL_UP = 4, WHEEL_DOWN = 5 };
 
-  namespace Style {
-    constexpr uint16_t NONE = 0x0000;
-    constexpr uint16_t BLACK = 0x0001;
-    constexpr uint16_t RED = 0x0002;
-    constexpr uint16_t GREEN = 0x0003;
-    constexpr uint16_t YELLOW = 0x0004;
-    constexpr uint16_t BLUE = 0x0005;
-    constexpr uint16_t MAGENTA = 0x0006;
-    constexpr uint16_t CYAN = 0x0007;
-    constexpr uint16_t WHITE = 0x0008;
-    // bitwise attributes; use like `CYAN | BOLD | ITALIC`
-    constexpr uint16_t BOLD = 0x0100;
-    constexpr uint16_t UNDERLINE = 0x0200;
-    constexpr uint16_t REVERSE = 0x0400;
-    constexpr uint16_t ITALIC = 0x0800; // May have no visible effect
-    constexpr uint16_t BRIGHT = 0x1000; // Doesn't work with RGB colors
-    constexpr uint16_t DIM = 0x4000;    // May have no visible effect
+  namespace style {
+    constexpr uint32_t NONE = 0;           // No styling. Not to be confused with DEFAULT.
 
-    // Build a color from the 6×6×6 RGB cube (each param in 0..5).
-    // Example: `term.print(0, y++, rgb_color(5, 2, 1) | BOLD, 0, "Bold orange text");`
-    constexpr uint16_t rgb_color(uint8_t r, uint8_t g, uint8_t b) { return 0x8000 | (16 + (r * 36 + g * 6 + b)); }
+    // 8 basic colors
+    constexpr uint32_t BLACK = 1 << 20;
+    constexpr uint32_t RED = 2 << 20;
+    constexpr uint32_t GREEN = 3 << 20;
+    constexpr uint32_t YELLOW = 4 << 20;
+    constexpr uint32_t BLUE = 5 << 20;
+    constexpr uint32_t MAGENTA = 6 << 20;
+    constexpr uint32_t CYAN = 7 << 20;
+    constexpr uint32_t WHITE = 8 << 20;
+
+    // Стилевые флаги
+    constexpr uint32_t BOLD = 1 << 29;
+    constexpr uint32_t UNDERLINE = 1 << 28;
+    constexpr uint32_t REVERSE = 1 << 27;   // Swaps foreground and background
+    constexpr uint32_t ITALIC = 1 << 26;
+    constexpr uint32_t DIM = 1 << 25;
+    constexpr uint32_t BRIGHT = 1 << 24;    // Only works with in the 8 colors mode
+
+    // Специальные биты
+    constexpr uint32_t TRUECOLOR = 1 << 30; // Set automatically!!!
+    constexpr uint32_t DEFAULT = 1 << 31;   // Use attributes set with `set_default_style()`
+
+    // Create a TrueColor attribute from RGB values (0..255)
+    constexpr uint32_t rgb(uint8_t r, uint8_t g, uint8_t b) {
+      return TRUECOLOR | ((uint32_t)(r) << 16) | ((uint32_t(g)) << 8) | ((uint32_t(b)));
+    }
+    // Create a TrueColor attribute from a HEX code (e.g. "fb0baf");
+    // @throws `std::invalid_argument` - Not a valid HEX-code.
+    constexpr uint32_t rgb(const char *str) {
+      if (!str || strlen(str) != 6) throw std::invalid_argument("Invalid hex code");
+
+      uint32_t value = 0;
+      for (size_t i = 0; i < 6; ++i) {
+        if (str[i] >= '0' && str[i] <= '9') value += str[i] - '0';
+        else if (str[i] >= 'a' && str[i] <= 'f') value += str[i] - 'a' + 10;
+        else if (str[i] >= 'A' && str[i] <= 'F') value += str[i] - 'A' + 10;
+        if (i != 5) value *= 16;
+      }
+      return TRUECOLOR | value;
+    }
   }
 
   enum class EventType { NONE = 0, KEY = 1, RESIZE = 2, MOUSE = 3 };
@@ -1344,12 +1366,12 @@ namespace mbox {
     constexpr size_t WCWIDTH_TABLE_LENGTH = 2143;
   }
 
-  // Check whether the current terminal supports the 256 color range.
+  // Check whether the current terminal supports RGB colors
   inline bool supports_rgb() {
     const char *term = getenv("TERM");
-    if (term && strstr(term, "256color")) return true;
+    if (term && strstr(term, "256color")) return true; // it almost certainly also supports TrueColor
     const char *colorterm = getenv("COLORTERM");
-    if (colorterm && (!strcmp(colorterm, "truecolor") || !strcmp(colorterm, "24bit"))) return true;
+    if (colorterm && !strcmp(colorterm, "truecolor")) return true;
     return false;
   }
 
@@ -1360,11 +1382,11 @@ namespace mbox {
   // - `utf32_width(ch) >= 2`: zero out the shadowed cells and skip sending them to the tty.
   //   So, if the caller sets `(0, 0)` to a `W == 2` codepoint, anything set at `(1, 0)` will be ignored.
   struct cell {
-    uint16_t fg;    // foreground attributes
-    uint16_t bg;    // background attributes
+    uint32_t fg;    // foreground attributes
+    uint32_t bg;    // background attributes
     char32_t ch; // a Unicode codepoint
 
-    cell(uint16_t fg, uint16_t bg, char32_t ch) : fg(fg), bg(bg), ch(ch) {}
+    cell(uint32_t fg, uint32_t bg, char32_t ch) : fg(fg), bg(bg), ch(ch) {}
     cell() : fg(0), bg(0), ch(' ') {}
 
     bool operator==(const cell &right) const {
@@ -1389,7 +1411,7 @@ namespace mbox {
     bool in_bounds(uint16_t x, uint16_t y) {
       return !(x >= this->width || y >= this->height);
     }
-    void clear(uint16_t fg, uint16_t bg) {
+    void clear(uint32_t fg, uint32_t bg) {
       for (cell &c : cells) c = cell(U' ', fg, bg);
     }
     void resize(uint16_t new_width, uint16_t new_height) {
@@ -1577,8 +1599,8 @@ namespace mbox {
     uint16_t width = 0, height = 0;
     int cursor_x = -1, cursor_y = -1;
     int last_x = -1, last_y = -1;
-    uint16_t default_fg = Style::NONE;
-    uint16_t default_bg = Style::NONE;
+    uint32_t default_fg = style::NONE;
+    uint32_t default_bg = style::NONE;
     uint16_t last_fg = ~default_fg;
     uint16_t last_bg = ~default_bg;
     bool mouse_mode = false;
@@ -1776,49 +1798,63 @@ namespace mbox {
       height = rh;
     }
 
-    void send_attr(uint16_t fg, uint16_t bg) {
+    void send_attr(uint32_t fg, uint32_t bg) {
       if (fg == last_fg && bg == last_bg) return;
 
       out.puts(caps[Cap::SGR0]);
-      if (fg & Style::BOLD) out.puts(caps[Cap::BOLD]);
-      if (fg & Style::UNDERLINE) out.puts(caps[Cap::UNDERLINE]);
-      if (fg & Style::ITALIC) out.puts(caps[Cap::ITALIC]);
-      if (fg & Style::DIM) out.puts(caps[Cap::DIM]);
-      if ((fg | bg) & Style::REVERSE) out.puts(caps[Cap::REVERSE]);
+      if (fg & style::BOLD) out.puts(caps[Cap::BOLD]);
+      if (fg & style::UNDERLINE) out.puts(caps[Cap::UNDERLINE]);
+      if (fg & style::ITALIC) out.puts(caps[Cap::ITALIC]);
+      if (fg & style::DIM) out.puts(caps[Cap::DIM]);
+      if ((fg | bg) & style::REVERSE) out.puts(caps[Cap::REVERSE]);
 
       // Not a 256-color and not an 8-color
-      bool fg_is_default = !(fg & 0x80ff);
-      bool bg_is_default = !(bg & 0x80ff);
+      bool fg_is_default = fg & style::DEFAULT;
+      bool bg_is_default = bg & style::DEFAULT;
 
-      // Minus 1 is because colors are 1-indexed.
-      if (!fg_is_default || !bg_is_default) {
+      fg = fg_is_default ? default_fg : fg;
+      bg = bg_is_default ? default_bg : bg;
+
+      bool need_semicolon = false;
+
+      if (fg & 0x00FFFFFF) { // has color
         out.puts("\x1b[");
-
-        if (!fg_is_default) {
-          if (fg & 0x8000) { // 256-color
-            out.puts("38;5;");
-            out.put_number(fg & 0xff);
-          } else {           // 8-color
-            out.put_number((fg & Style::BRIGHT ? 90 : 30) + (fg & 0x0f) - 1);
-          }
+        if (fg & style::TRUECOLOR) {
+          uint8_t r = (fg >> 16) & 0xFF;
+          uint8_t g = (fg >> 8) & 0xFF;
+          uint8_t b = fg & 0xFF;
+          out.puts("38;2;");
+          out.put_number(r); out.puts(";");
+          out.put_number(g); out.puts(";");
+          out.put_number(b);
+        } else {
+          uint8_t color = (fg >> 20) & 0x0F;
+          out.put_number((fg & style::BRIGHT) ? 90 : 30 + color - 1);
         }
-
-        if (!(fg_is_default || bg_is_default)) out.puts(";");
-
-        if (!bg_is_default) {
-          if (bg & 0x8000) { // 256-color
-            out.puts("48;5;");
-            out.put_number(bg & 0xff);
-          } else {           // 8-color
-            out.put_number((bg & Style::BRIGHT ? 100 : 40) + (bg & 0x0f) - 1);
-          }
-        }
-
-        out.puts("m");
+        need_semicolon = true;
       }
 
-      last_fg = fg;
-      last_bg = bg;
+      if (bg & 0x00FFFFFF) { // has color
+        if (need_semicolon) out.puts(";");
+        else                out.puts("\x1b[");
+        if (bg & style::TRUECOLOR) {
+          uint8_t r = (bg >> 16) & 0xFF;
+          uint8_t g = (bg >> 8) & 0xFF;
+          uint8_t b = bg & 0xFF;
+          out.puts("48;2;");
+          out.put_number(r); out.puts(";");
+          out.put_number(g); out.puts(";");
+          out.put_number(b);
+        } else {
+          uint8_t color = (bg >> 20) & 0x0F;
+          out.put_number((bg & style::BRIGHT) ? 100 : 40 + color - 1);
+        }
+        need_semicolon = true;
+      }
+
+      if (need_semicolon) out.puts("m");
+
+      last_fg = fg; last_bg = bg;
     }
 
     void move_cursor(uint16_t x, uint16_t y) {
@@ -2141,8 +2177,8 @@ namespace mbox {
 
     // Clear the back buffer using default attributes or ones set with `set_default_attrs`.
     void clear() { back.clear(default_fg, default_bg); }
-    // Set the default Style of cells for `clear()` and some other methods
-    void set_default_style(uint16_t fg, uint16_t bg) {
+    // Set the default style of cells for `clear()` and some other methods
+    void set_default_style(uint32_t fg, uint32_t bg) {
       default_fg = fg;
       default_bg = bg;
     }
@@ -2152,7 +2188,7 @@ namespace mbox {
     void set_cell(uint16_t x, uint16_t y, cell c) { back.at(x, y) = c; }
     // Set cell contents in the back buffer at the specified position. 
     // @note Consider `printf`.
-    void set_cell(uint16_t x, uint16_t y, uint16_t fg, uint16_t bg, char32_t ch) { back.at(x, y) = cell(fg, bg, ch); }
+    void set_cell(uint16_t x, uint16_t y, uint32_t fg, uint32_t bg, char32_t ch) { back.at(x, y) = cell(fg, bg, ch); }
     // Get cell contents in the back buffer at the specified position. 
     // @note Returns the last *set* character, not the *visible* one.
     cell get_cell(uint16_t x, uint16_t y) { return back.at(x, y); }
@@ -2266,7 +2302,7 @@ namespace mbox {
               // thereby skipping some cells. Set these skipped cells to invalid.
               for (uint16_t i = 1; i < w; i++)
                 // TODO: 0xFFFD??
-                front.at(x + i, y) = cell(-1, Style::NONE, Style::NONE);
+                front.at(x + i, y) = cell(-1, style::NONE, style::NONE);
             }
           }
           x += w;
@@ -2294,7 +2330,7 @@ namespace mbox {
     // Non-printable characters and invalid UTF-8 byte sequences are replaced with U+FFFD.
     // Newlines will move cursor to the initial column of the next row.
     // @note Consider `printf` and `set_cell`.
-    void print(uint16_t x, uint16_t y, uint16_t fg, uint16_t bg, const char *str) {
+    void print(uint16_t x, uint16_t y, uint32_t fg, uint32_t bg, const char *str) {
       if (!back.in_bounds(x, y)) return;
 
       uint16_t orig_x = x;
@@ -2325,7 +2361,7 @@ namespace mbox {
       }
     }
     // Does exactly what you think. Read `print()` for details.
-    void printf(uint16_t x, uint16_t y, uint16_t fg, uint16_t bg, const char *fmt, ...) {
+    void printf(uint16_t x, uint16_t y, uint32_t fg, uint32_t bg, const char *fmt, ...) {
       char buf[16384];
       va_list vl;
       va_start(vl, fmt);
