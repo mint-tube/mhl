@@ -86,14 +86,13 @@ namespace mbox {
     constexpr uint16_t MAGENTA = 0x0006;
     constexpr uint16_t CYAN = 0x0007;
     constexpr uint16_t WHITE = 0x0008;
-    // bitwise attributes; use like `CYAN | BOLD | BLINK`
+    // bitwise attributes; use like `CYAN | BOLD | ITALIC`
     constexpr uint16_t BOLD = 0x0100;
     constexpr uint16_t UNDERLINE = 0x0200;
     constexpr uint16_t REVERSE = 0x0400;
-    constexpr uint16_t ITALIC = 0x0800;
-    constexpr uint16_t BRIGHT = 0x1000;
-    constexpr uint16_t BLINK = 0x2000;
-    constexpr uint16_t DIM = 0x4000;
+    constexpr uint16_t ITALIC = 0x0800; // May have no visible effect
+    constexpr uint16_t BRIGHT = 0x1000; // May look the same as BOLD in older terminals
+    constexpr uint16_t DIM = 0x4000;    // May have no visible effect
   };
 
   enum class EventType { NONE = 0, KEY = 1, RESIZE = 2, MOUSE = 3 };
@@ -1770,7 +1769,6 @@ namespace mbox {
 
       out.puts(caps[Cap::SGR0]);
       if (fg & Style::BOLD) out.puts(caps[Cap::BOLD]);
-      if (fg & Style::BLINK) out.puts(caps[Cap::BLINK]);
       if (fg & Style::UNDERLINE) out.puts(caps[Cap::UNDERLINE]);
       if (fg & Style::ITALIC) out.puts(caps[Cap::ITALIC]);
       if (fg & Style::DIM) out.puts(caps[Cap::DIM]);
