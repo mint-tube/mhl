@@ -1412,7 +1412,7 @@ namespace mbox {
       return !(x >= this->width || y >= this->height);
     }
     void clear(uint32_t fg, uint32_t bg) {
-      for (cell &c : cells) c = cell(U' ', fg, bg);
+      for (cell &c : cells) c = cell(fg, bg, U' ');
     }
     void resize(uint16_t new_width, uint16_t new_height) {
       std::vector<cell> new_cells(new_height * new_width);
@@ -1457,7 +1457,6 @@ namespace mbox {
     }
 
     void flush(int fd) {
-      if (buf.size() == 0) return;
       if (write(fd, buf.data(), buf.size()) == -1)
         throw std::runtime_error("`write` failed - can't flush the bytebuf");
       buf.clear();
@@ -2124,6 +2123,7 @@ namespace mbox {
 
 
   public:
+    // Initialize the singleton object. Use it to interact with the terminal.
     // @throws `std::logic_error` - an instance of `term` already exists.
     // @throws `std::runtime_error` - an unexpected error occured.
     term() {
@@ -2303,6 +2303,7 @@ namespace mbox {
         }
       }
 
+      send_attr(style::DEFAULT, style::DEFAULT);
       move_cursor(cursor_x, cursor_y);
       out.flush(ttyfd);
     }
