@@ -79,7 +79,7 @@ namespace mbox {
   namespace style {
     constexpr uint32_t NONE = 0;           // No styling. Not to be confused with DEFAULT.
 
-    // 8 basic colors
+    // 8 basic colors. NEVER combine color!!!!!
     constexpr uint32_t BLACK = 1 << 20;
     constexpr uint32_t RED = 2 << 20;
     constexpr uint32_t GREEN = 3 << 20;
@@ -89,7 +89,7 @@ namespace mbox {
     constexpr uint32_t CYAN = 7 << 20;
     constexpr uint32_t WHITE = 8 << 20;
 
-    // Стилевые флаги
+    // Bitwise attributes - use like `BLUE | BOLD | ITALIC`
     constexpr uint32_t BOLD = 1 << 29;
     constexpr uint32_t UNDERLINE = 1 << 28;
     constexpr uint32_t REVERSE = 1 << 27;   // Swaps foreground and background
@@ -97,7 +97,7 @@ namespace mbox {
     constexpr uint32_t DIM = 1 << 25;
     constexpr uint32_t BRIGHT = 1 << 24;    // Only works with in the 8 colors mode
 
-    // Специальные биты
+    // Special bits
     constexpr uint32_t TRUECOLOR = 1 << 30; // Set automatically!!!
     constexpr uint32_t DEFAULT = 1 << 31;   // Use attributes set with `set_default_style()`
 
@@ -106,9 +106,9 @@ namespace mbox {
       return TRUECOLOR | ((uint32_t)(r) << 16) | ((uint32_t(g)) << 8) | ((uint32_t(b)));
     }
     // Create a TrueColor attribute from a HEX code (e.g. "fb0baf");
-    // @throws `std::invalid_argument` - Not a valid HEX-code.
+    // @throws `std::invalid_argument` - Not a valid HEX code.
     constexpr uint32_t rgb(const char *str) {
-      if (!str || strlen(str) != 6) throw std::invalid_argument("Invalid hex code");
+      if (!str || strlen(str) != 6) throw std::invalid_argument("Invalid HEX code");
 
       uint32_t value = 0;
       for (size_t i = 0; i < 6; ++i) {
@@ -1369,7 +1369,7 @@ namespace mbox {
   // Check whether the current terminal supports RGB colors
   inline bool supports_rgb() {
     const char *term = getenv("TERM");
-    if (term && strstr(term, "256color")) return true; // it almost certainly also supports TrueColor
+    if (term && strstr(term, "256color")) return true; // almost certainly also supports TrueColor
     const char *colorterm = getenv("COLORTERM");
     if (colorterm && !strcmp(colorterm, "truecolor")) return true;
     return false;
@@ -1378,9 +1378,9 @@ namespace mbox {
   // A cell in a 2d grid representing the terminal screen.
   //
   // For non-single-width codepoints:
-  // - `utf32_width(ch) <= 0`: force an empty cell. Use `print*` to properly combine zero-width characters.
+  // - `utf32_width(ch) <= 0`: force an empty cell. Use `print*` to properly combine characters.
   // - `utf32_width(ch) >= 2`: zero out the shadowed cells and skip sending them to the tty.
-  //   So, if the caller sets `(0, 0)` to a `W == 2` codepoint, anything set at `(1, 0)` will be ignored.
+  //   If the caller sets `(0, 0)` to a `W == 2` codepoint, anything set at `(1, 0)` will be ignored.
   struct cell {
     uint32_t fg;    // foreground attributes
     uint32_t bg;    // background attributes
@@ -1455,6 +1455,7 @@ namespace mbox {
       if (n >= buf.size()) buf.clear();
       else buf.erase(buf.begin(), buf.begin() + n);
     }
+
     void flush(int fd) {
       if (buf.size() == 0) return;
       if (write(fd, buf.data(), buf.size()) == -1)
@@ -1658,7 +1659,7 @@ namespace mbox {
 
       return true;
     }
-    // we live in a cruel world
+    // We live in a cruel world.
     void load_terminfo() {
       char *term(getenv("TERM"));
       if (!term) throw std::runtime_error("$TERM is unset");
@@ -1682,7 +1683,7 @@ namespace mbox {
     }
     int16_t get_terminfo_int16(size_t offset) {
       if (offset + sizeof(int16_t) > terminfo.size())
-        throw std::range_error("Terminfo index out of bounds");
+        throw std::out_of_range("Terminfo index out of bounds");
       int16_t value;
       memcpy(&value, terminfo.c_str() + offset, sizeof(int16_t));
       return value;
@@ -1703,11 +1704,6 @@ namespace mbox {
     }
     void parse_terminfo_caps() {
       // see term(5) "LEGACY STORAGE FORMAT" and "EXTENDED STORAGE FORMAT"
-
-      if (terminfo.size() < 12) // ensure there's at least a header
-        throw std::runtime_error("Terminfo smaller than 12 bytes, skipping");
-
-      // the magic number (0432 or 01036)
       int16_t magic_number = get_terminfo_int16(0);
       // the size, in bytes, of the names section
       int16_t nbytes_names = get_terminfo_int16(2);
@@ -1829,7 +1825,7 @@ namespace mbox {
           out.put_number(b);
         } else {
           uint8_t color = (fg >> 20) & 0x0F;
-          out.put_number((fg & style::BRIGHT) ? 90 : 30 + color - 1);
+          out.put_number(((fg & style::BRIGHT) ? 90 : 30) + color - 1);
         }
         need_semicolon = true;
       }
@@ -1847,7 +1843,7 @@ namespace mbox {
           out.put_number(b);
         } else {
           uint8_t color = (bg >> 20) & 0x0F;
-          out.put_number((bg & style::BRIGHT) ? 100 : 40 + color - 1);
+          out.put_number(((bg & style::BRIGHT) ? 100 : 40) + color - 1);
         }
         need_semicolon = true;
       }
@@ -2259,9 +2255,7 @@ namespace mbox {
     }
     // Wait for an event indefinetely.
     // @note Consider `peek_event`
-    event poll_event() {
-      return peek_event(-1);
-    }
+    event poll_event() { return peek_event(-1); }
 
     // Move the cursor to (x, y)
     // @note Consider `hide_cursor`
@@ -2328,7 +2322,8 @@ namespace mbox {
 
     // Does exactly what you think. Strings are interpreted as UTF-8.
     // Non-printable characters and invalid UTF-8 byte sequences are replaced with U+FFFD.
-    // Newlines will move cursor to the initial column of the next row.
+    // Newlines will move cursor to (x; y++).
+    // Notice that grapheme clusters are unsupported. Some emojis will fail to render.
     // @note Consider `printf` and `set_cell`.
     void print(uint16_t x, uint16_t y, uint32_t fg, uint32_t bg, const char *str) {
       if (!back.in_bounds(x, y)) return;
@@ -2400,8 +2395,9 @@ namespace mbox {
   };
   term *term::self_ptr = nullptr;
 
-  // Ring the terminal bell. `putchar(7)` will not work in the raw mode.
-  void beep() { system("tput bel"); }
+  // Ring the terminal bell. Might be disabled.
+  // @note `putchar(7)` will not work in the raw mode.
+  void beep() { [[maybe_unused]] int _; _ = system("tput bel"); }
 }
 
 /*

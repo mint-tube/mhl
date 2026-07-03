@@ -8,10 +8,10 @@ int main() {
     term term;
     size_t y = 0;
 
-    term.printf(0, y++, 0, 0, "привет from mbox!");                   // full support of UTF-8
+    term.print(0, y++, 0, 0, "привет from mbox!");                   // full support of UTF-8
     term.printf(0, y++, DIM, 0, "width=%d height=%d", term.get_width(), term.get_height());
-    term.printf(0, y++, BLUE | BOLD, 0, "PRESS <ESC> to quit");       // text attributes from mbox::style
-    term.printf(0, y++, BLUE | BOLD, 0, "PRESS <TAB> to toggle mouse capture");
+    term.print(0, y++, BLUE | BOLD, 0, "PRESS <ESC> to quit");       // cool styling attributes
+    term.print(0, y++, BLUE | BOLD, 0, "PRESS <TAB> to toggle mouse capture");
     term.flush();                                                     // flush the buffer manually
     y++;
 
@@ -32,7 +32,7 @@ int main() {
 
         term.set_cell(0, y, 0, 0, U'🔶');                             // write to any cell
         uint32_t color = supports_rgb() ? rgb(248, 157, 20) : RED;  // rgb!!!
-        term.printf(3, y++, color | BOLD, 0, "Toggled mouse input");
+        term.printf(3, y++, color | BOLD, 0, "Mouse input is %s", mouse_mode ? "on" : "off");
       }
 
       switch (ev.type) {
