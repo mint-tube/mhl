@@ -105,9 +105,10 @@ namespace mbox {
     constexpr uint32_t rgb(uint8_t r, uint8_t g, uint8_t b) {
       return TRUECOLOR | ((uint32_t)(r) << 16) | ((uint32_t(g)) << 8) | ((uint32_t(b)));
     }
-    // Create a TrueColor attribute from a HEX code (e.g. "fb0baf");
+    // Create a TrueColor attribute from a HEX code ("fb0baf", "D0C8C8", "#5C5EFE");
     // @throws `std::invalid_argument` - Not a valid HEX code.
     constexpr uint32_t rgb(const char *str) {
+      if (str && str[0] == '#') str++;
       if (!str || strlen(str) != 6) throw std::invalid_argument("Invalid HEX code");
 
       uint32_t value = 0;
