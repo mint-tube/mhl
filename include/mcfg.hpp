@@ -83,16 +83,24 @@ namespace mcfg {
     // Create an empty section/field if it doesn't exist.
     // @note Use this where you'd use a `[]` operator with a normal array.
     std::string &operator()(std::string section_name, std::string field_name) {
-      section_name = strip(section_name); field_name = strip(field_name);
+      section_name = strip(section_name);
+      field_name = strip(field_name);
 
       auto section = std::find_if(sections.begin(), sections.end(),
-        [&](const auto &p) { return p.first == section; });
-      if (section == sections.end()) sections.push_back({section_name, {}});
+        [&](const auto &p) { return p.first == section_name; });
 
-      auto &fields = sections.back().second;
+      if (section == sections.end()) {
+        sections.push_back({section_name, {}});
+        section = sections.end() - 1;
+      }
+
+      auto &fields = section->second;
       auto field = std::find_if(fields.begin(), fields.end(),
         [&](const auto &fp) { return fp.first == field_name; });
-      if (field == fields.end()) fields.push_back({field_name, ""});
+      if (field == fields.end()) {
+        fields.push_back({field_name, ""});
+        field = fields.end() - 1;
+      }
 
       return field->second;
     }
