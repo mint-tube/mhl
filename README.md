@@ -3,7 +3,8 @@
 ## Usage
 Download whatever headers you need and include them wherever you need. That's it. \
 Headers do not use features from C++20 or newer. \
-The libraries are only tested on Linux. `mbox` does not work on Windows.
+The libraries are only tested on Linux. `mbox` does not work on Windows. \
+The API is still unstable. Bugs will be fixed immediately if reported.
 
 ## Documentation
 The code is the documentation. \

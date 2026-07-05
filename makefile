@@ -9,15 +9,9 @@ help:
 	$(info - ${NAMES})
 
 $(NAMES): %: examples/%.cpp include/%.hpp
-ifeq ($(OS), Windows_NT)
-	if not exist .build mkdir .build
-	$(CXX) $(CXXFLAGS) $< -o .build\$@.exe
-	.build\$@.exe
-else
 	mkdir -p .build
 	$(CXX) $(CXXFLAGS) $< -o .build/$@
 	.build/$@
-endif
 
 .SILENT:
 .PHONY: help $(NAMES)
