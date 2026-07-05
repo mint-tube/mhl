@@ -1,7 +1,9 @@
 #pragma once
 #include <fstream>
 #include <vector>
+#include <array>
 #include <string>
+#include <string_view>
 #include <stdexcept>
 #include <cstring>
 #include <cstdint>
@@ -178,8 +180,8 @@ namespace mbox {
     constexpr size_t CAPSIZE = 38; // pun intended
 
     namespace HardCap {
-      constexpr const char ENTER_MOUSE[] = "\x1b[?1000h\x1b[?1015h\x1b[?1006h";
-      constexpr const char EXIT_MOUSE[] = "\x1b[?1006l\x1b[?1015l\x1b[?1000l";
+      std::string_view ENTER_MOUSE = "\x1b[?1000h\x1b[?1015h\x1b[?1006h";
+      std::string_view EXIT_MOUSE = "\x1b[?1000l\x1b[?1015l\x1b[?1006l";
     }
 
     const int16_t terminfo_cap_indexes[] = {
@@ -1433,26 +1435,11 @@ namespace mbox {
   struct bytebuf {
     std::vector<char> buf;
 
-    void nputs(const char *str, size_t n) {
+    void put(std::string_view str, size_t n = std::string_view::npos) {
+      if (n == std::string_view::npos) n = str.size();
       for (size_t i = 0; i < n; i++) buf.push_back(str[i]);
     }
-    void puts(const char *str) { nputs(str, (size_t)strlen(str)); }
-    void put_number(unsigned num) {
-      char str[32];
-      int i, l = 0;
-      char ch;
-      do {
-        str[l++] = '0' + (num % 10);
-        num /= 10;
-      } while (num);
-      for (i = 0; i < l / 2; i++) {
-        ch = str[i];
-        str[i] = str[l - 1 - i];
-        str[l - 1 - i] = ch;
-      }
-
-      nputs(str, l);
-    }
+    void put(unsigned num) { put(std::to_string(num)); }
     void shift(size_t n) {
       if (n >= buf.size()) buf.clear();
       else buf.erase(buf.begin(), buf.begin() + n);
@@ -1607,7 +1594,7 @@ namespace mbox {
     uint16_t last_bg = ~default_bg;
     bool mouse_mode = false;
     std::string terminfo;
-    const char *caps[CAPSIZE] = {};
+    std::array<std::string_view, CAPSIZE> caps;
     cap_trie cap_trie_root;
     bytebuf in, out;
     cellbuf back{0, 0}, front{0, 0};
@@ -1701,7 +1688,7 @@ namespace mbox {
       if (str_offset >= terminfo.size())
         throw std::runtime_error("Failed to load some caps from terminfo");
 
-      return &terminfo[str_offset];
+      return terminfo.c_str() + str_offset;
     }
     void parse_terminfo_caps() {
       // see term(5) "LEGACY STORAGE FORMAT" and "EXTENDED STORAGE FORMAT"
@@ -1744,7 +1731,7 @@ namespace mbox {
       if (!term) throw std::runtime_error("`$TERM` is unset");
 
       for (size_t i = 0; builtin_terms[i].name != nullptr; i++) {
-        if (strcmp(term, builtin_terms[i].name) == 0) {
+        if (strcmp(term, builtin_terms[i].name) == 0) { // TODO
           for (size_t j = 0; j < CAPSIZE; j++)
             caps[j] = builtin_terms[i].caps[j];
           return;
@@ -1798,12 +1785,12 @@ namespace mbox {
     void send_attr(uint32_t fg, uint32_t bg) {
       if (fg == last_fg && bg == last_bg) return;
 
-      out.puts(caps[Cap::SGR0]);
-      if (fg & style::BOLD) out.puts(caps[Cap::BOLD]);
-      if (fg & style::UNDERLINE) out.puts(caps[Cap::UNDERLINE]);
-      if (fg & style::ITALIC) out.puts(caps[Cap::ITALIC]);
-      if (fg & style::DIM) out.puts(caps[Cap::DIM]);
-      if ((fg | bg) & style::REVERSE) out.puts(caps[Cap::REVERSE]);
+      out.put(caps[Cap::SGR0]);
+      if (fg & style::BOLD) out.put(caps[Cap::BOLD]);
+      if (fg & style::UNDERLINE) out.put(caps[Cap::UNDERLINE]);
+      if (fg & style::ITALIC) out.put(caps[Cap::ITALIC]);
+      if (fg & style::DIM) out.put(caps[Cap::DIM]);
+      if ((fg | bg) & style::REVERSE) out.put(caps[Cap::REVERSE]);
 
       // Not a 256-color and not an 8-color
       bool fg_is_default = fg & style::DEFAULT;
@@ -1815,51 +1802,51 @@ namespace mbox {
       bool need_semicolon = false;
 
       if (fg & 0x00FFFFFF) { // has color
-        out.puts("\x1b[");
+        out.put("\x1b[");
         if (fg & style::TRUECOLOR) {
           uint8_t r = (fg >> 16) & 0xFF;
           uint8_t g = (fg >> 8) & 0xFF;
           uint8_t b = fg & 0xFF;
-          out.puts("38;2;");
-          out.put_number(r); out.puts(";");
-          out.put_number(g); out.puts(";");
-          out.put_number(b);
+          out.put("38;2;");
+          out.put(r); out.put(";");
+          out.put(g); out.put(";");
+          out.put(b);
         } else {
           uint8_t color = (fg >> 20) & 0x0F;
-          out.put_number(((fg & style::BRIGHT) ? 90 : 30) + color - 1);
+          out.put(((fg & style::BRIGHT) ? 90 : 30) + color - 1);
         }
         need_semicolon = true;
       }
 
       if (bg & 0x00FFFFFF) { // has color
-        if (need_semicolon) out.puts(";");
-        else                out.puts("\x1b[");
+        if (need_semicolon) out.put(";");
+        else                out.put("\x1b[");
         if (bg & style::TRUECOLOR) {
           uint8_t r = (bg >> 16) & 0xFF;
           uint8_t g = (bg >> 8) & 0xFF;
           uint8_t b = bg & 0xFF;
-          out.puts("48;2;");
-          out.put_number(r); out.puts(";");
-          out.put_number(g); out.puts(";");
-          out.put_number(b);
+          out.put("48;2;");
+          out.put(r); out.put(";");
+          out.put(g); out.put(";");
+          out.put(b);
         } else {
           uint8_t color = (bg >> 20) & 0x0F;
-          out.put_number(((bg & style::BRIGHT) ? 100 : 40) + color - 1);
+          out.put(((bg & style::BRIGHT) ? 100 : 40) + color - 1);
         }
         need_semicolon = true;
       }
 
-      if (need_semicolon) out.puts("m");
+      if (need_semicolon) out.put("m");
 
       last_fg = fg; last_bg = bg;
     }
 
     void move_cursor(uint16_t x, uint16_t y) {
-      out.puts("\x1b[");
-      out.put_number(y + 1);
-      out.puts(";");
-      out.put_number(x + 1);
-      out.puts("H");
+      out.put("\x1b[");
+      out.put(y + 1);
+      out.put(";");
+      out.put(x + 1);
+      out.put("H");
     }
     void send_char(uint16_t x, uint16_t y, char32_t ch) {
       if (last_x != x - 1 || last_y != y)
@@ -1872,11 +1859,11 @@ namespace mbox {
 
       char ch8[8];
       size_t ch8_len = utf32_to_utf8(ch8, ch);
-      out.nputs(ch8, ch8_len);
+      out.put(ch8, ch8_len);
     }
     void send_full_clear() {
       send_attr(default_fg, default_bg);
-      out.puts(caps[Cap::CLEAR_SCREEN]);
+      out.put(caps[Cap::CLEAR_SCREEN]);
       move_cursor(cursor_x, cursor_y);
       out.flush(ttyfd);
       last_x = -1;
@@ -2106,11 +2093,11 @@ namespace mbox {
     }
     void init_cap_trie() {
       // Add caps from terminfo or use fallbacks. Collisions are expected.
-      for (size_t i = 0; i < CAPSIZE; i++)
+      for (size_t i = 0; i < 23; i++)
         cap_trie_add(caps[i], (Key)(0xff - i), Mod::NONE);
 
       // Add built-in mod caps
-      for (int i = 0; builtin_mod_caps[i].cap != nullptr; i++)
+      for (int i = 0; builtin_mod_caps[i].cap != nullptr; i++) // TODO
         cap_trie_add(builtin_mod_caps[i].cap, builtin_mod_caps[i].key, builtin_mod_caps[i].mod);
     }
     void init_resize_handler() {
@@ -2119,9 +2106,9 @@ namespace mbox {
       signal(SIGWINCH, term::handle_resize);
     }
     void init_escape_codes() {
-      out.puts(caps[Cap::ENTER_CA]);
-      out.puts(caps[Cap::ENTER_KEYPAD]);
-      out.puts(caps[Cap::HIDE_CURSOR]);
+      out.put(caps[Cap::ENTER_CA]);
+      out.put(caps[Cap::ENTER_KEYPAD]);
+      out.put(caps[Cap::HIDE_CURSOR]);
     }
 
 
@@ -2152,12 +2139,12 @@ namespace mbox {
     }
 
     ~term() noexcept {
-      out.puts(caps[Cap::SHOW_CURSOR]);
-      out.puts(caps[Cap::SGR0]);
-      out.puts(caps[Cap::CLEAR_SCREEN]);
-      out.puts(caps[Cap::EXIT_CA]);
-      out.puts(caps[Cap::EXIT_KEYPAD]);
-      out.puts(HardCap::EXIT_MOUSE);
+      out.put(caps[Cap::SHOW_CURSOR]);
+      out.put(caps[Cap::SGR0]);
+      out.put(caps[Cap::CLEAR_SCREEN]);
+      out.put(caps[Cap::EXIT_CA]);
+      out.put(caps[Cap::EXIT_KEYPAD]);
+      out.put(HardCap::EXIT_MOUSE);
       out.flush(ttyfd);
 
       tcsetattr(ttyfd, TCSAFLUSH, &orig_tios);
@@ -2231,7 +2218,7 @@ namespace mbox {
           if (read_rv == -1) { // weird things
             throw std::runtime_error("`read` failed: " + std::string(strerror(errno)));
           } else if (read_rv > 0) {
-            in.nputs(buf, read_rv);
+            in.put(buf, read_rv);
           }
         }
 
@@ -2263,14 +2250,14 @@ namespace mbox {
     // Move the cursor to (x, y)
     // @note Consider `hide_cursor`
     void set_cursor(uint16_t x, uint16_t y) {
-      if (cursor_x == -1) out.puts(caps[Cap::SHOW_CURSOR]);
+      if (cursor_x == -1) out.put(caps[Cap::SHOW_CURSOR]);
       move_cursor(x, y);
       cursor_x = x;
       cursor_y = y;
     }
     // Hide the cursor if it was moved by set_cursor().
     void hide_cursor() {
-      if (cursor_x >= 0) out.puts(caps[Cap::HIDE_CURSOR]);
+      if (cursor_x >= 0) out.put(caps[Cap::HIDE_CURSOR]);
       cursor_x = -1;
     }
 
@@ -2310,14 +2297,15 @@ namespace mbox {
     }
 
     // Enable or disable mouse events
+    // @note See `mouse_drag`
     void capture_mouse(bool enable) {
       if (enable && !mouse_mode) {
         mouse_mode = true;
-        out.puts(HardCap::ENTER_MOUSE);
+        out.put(HardCap::ENTER_MOUSE);
         out.flush(ttyfd);
       } else if (!enable && mouse_mode) {
         mouse_mode = false;
-        out.puts(HardCap::EXIT_MOUSE);
+        out.put(HardCap::EXIT_MOUSE);
         out.flush(ttyfd);
       }
     }
@@ -2374,7 +2362,7 @@ namespace mbox {
     // and if you think you do, you probably don't.
     //
     // @note Consider `print`.
-    void send(const char *buf, size_t nbuf) { out.nputs(buf, nbuf); }
+    void send(const char *buf, size_t nbuf) { out.put(buf, nbuf); }
 
     // Do not use this.
     static void handle_resize(int sig) {

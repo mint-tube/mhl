@@ -20,3 +20,9 @@ int main() {
 
   cfg.save_as(cfg("", "new_path"));           // erases the comments
 }
+
+
+// Enable or disable repeating click events
+// when mouse is dragged with a button held down
+// @note Doesn't affect `capture_mouse`
+void mouse_drag(bool enable) {}
