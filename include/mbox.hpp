@@ -107,9 +107,9 @@ namespace mbox {
     }
     // Create a TrueColor attribute from a HEX code ("fb0baf", "D0C8C8", "#5C5EFE");
     // @throws `std::invalid_argument` - Not a valid HEX code.
-    constexpr uint32_t rgb(const char *str) {
-      if (str && str[0] == '#') str++;
-      if (!str || strlen(str) != 6) throw std::invalid_argument("Invalid HEX code");
+    constexpr uint32_t rgb(std::string_view str) {
+      if (!str.empty() && str[0] == '#') str.remove_prefix(1);
+      if (str.empty() || str.size() != 6) throw std::invalid_argument("Invalid HEX code");
 
       uint32_t value = 0;
       for (size_t i = 0; i < 6; ++i) {
