@@ -1414,6 +1414,7 @@ namespace mbox {
     void clear(uint32_t fg, uint32_t bg) {
       for (cell &c : cells) c = cell(fg, bg, U' ');
     }
+    // Save as much content as possible
     void resize(uint16_t new_width, uint16_t new_height) {
       std::vector<cell> new_cells(new_height * new_width);
 
@@ -1507,7 +1508,7 @@ namespace mbox {
       }
     }
 
-    return false; // invalid codepoint
+    return false; // Invalid codepoint
   }
   // Get the width of a Unicode codepoint
   size_t utf32_width(char32_t ch) {
@@ -1525,12 +1526,12 @@ namespace mbox {
         hi = i - 1;
       } else if (ch > wcwidth_table[i].range_end) {
         lo = i + 1;
-      } else { // hit!
+      } else { // Hit!!!
         return  wcwidth_table[i].width;
       }
     }
 
-    return 0; // invalid codepoint
+    return 0; // Invalid codepoint
   }
   // Convert UTF-8 null-terminated byte sequence to UTF-32 codepoint.
   //
@@ -1638,7 +1639,7 @@ namespace mbox {
         node = next;
       }
 
-      if (node->is_leaf) return; // cap collision
+      if (node->is_leaf) return; // Cap collision
 
       node->is_leaf = true;
       node->key = key;
@@ -1646,7 +1647,7 @@ namespace mbox {
     }
 
     bool load_terminfo_from_path(std::string path, std::string term) {
-      // like /etc/terminfo/x/xterm
+      // Like /etc/terminfo/x/xterm
       std::ifstream fin(path + "/" + term[0] + "/" + term, std::ios::binary | std::ios::ate);
       if (!fin) return false;
 
@@ -1715,7 +1716,7 @@ namespace mbox {
       // the size, in bytes, of the string table
       int16_t nbytes_strings = get_terminfo_int16(10);
 
-      // legacy ints are 16-bit, extended ints are 32-bit
+      // Legacy ints are 16-bit, extended ints are 32-bit
       const size_t bytes_per_int = (magic_number == 01036) ? 4 : 2;
 
       // Between the boolean section and the number section, a null byte may be
@@ -1729,7 +1730,7 @@ namespace mbox {
         + align_offset
         + (num_ints * bytes_per_int);
 
-      // length of string offsets table
+      // Length of string offsets table
       const size_t pos_str_table = pos_str_offsets + num_offsets * sizeof(int16_t);
 
       // Load caps
@@ -2173,7 +2174,7 @@ namespace mbox {
 
     // Clear the back buffer using default attributes or ones set with `set_default_attrs`.
     void clear() { back.clear(default_fg, default_bg); }
-    // Set the default style of cells for `clear()` and some other methods
+    // Set the default style of cells for `clear()` and `style::DEFAULT`
     void set_default_style(uint32_t fg, uint32_t bg) {
       default_fg = fg;
       default_bg = bg;
@@ -2292,11 +2293,9 @@ namespace mbox {
               }
             } else {
               send_char(x, y, cell_back.ch);
-              // When w>1, we need to advance the cursor by more than 1,
-              // thereby skipping some cells. Set these skipped cells to invalid.
+              // When w>1, we need to skip some cells. Invalidate them to avoid confusion.
               for (uint16_t i = 1; i < w; i++)
-                // TODO: 0xFFFD??
-                front.at(x + i, y) = cell(-1, style::NONE, style::NONE);
+                front.at(x + i, y) = cell(style::NONE, style::NONE, 0xfffd);
             }
           }
           x += w;
@@ -2308,7 +2307,7 @@ namespace mbox {
       out.flush(ttyfd);
     }
 
-    // Enable or disable the mouse integration
+    // Enable or disable mouse events
     void capture_mouse(bool enable) {
       if (enable && !mouse_mode) {
         mouse_mode = true;
@@ -2322,9 +2321,10 @@ namespace mbox {
     }
 
     // Does exactly what you think. Strings are interpreted as UTF-8.
+    //
     // Non-printable characters and invalid UTF-8 byte sequences are replaced with U+FFFD.
     // Newlines will move cursor to (x; y++).
-    // Notice that grapheme clusters are unsupported. Some emojis will fail to render.
+    //
     // @note Consider `printf` and `set_cell`.
     void print(uint16_t x, uint16_t y, uint32_t fg, uint32_t bg, const char *str) {
       if (!back.in_bounds(x, y)) return;
@@ -2337,7 +2337,7 @@ namespace mbox {
 
         if (rv <= 0) ch = 0xfffd; // replace invalid UTF-8 sequence with U+FFFD
 
-        if (ch == '\n') { // TODO: \r, \t, \v, \f, etc?
+        if (ch == '\n') {
           x = orig_x;
           y += 1;
           continue;
@@ -2356,7 +2356,7 @@ namespace mbox {
         str += std::abs(rv);
       }
     }
-    // Does exactly what you think. Read `print()` for details.
+    // See `print()`
     void printf(uint16_t x, uint16_t y, uint32_t fg, uint32_t bg, const char *fmt, ...) {
       char buf[16384];
       va_list vl;
@@ -2367,12 +2367,15 @@ namespace mbox {
       print(x, y, fg, bg, buf);
     }
     // Send raw bytes to the terminal.
+    //
+    // Only use it if you know what you are doing,
+    // and if you think you do, you probably don't.
+    //
     // @note Consider `print`.
     void send(const char *buf, size_t nbuf) {
       out.nputs(buf, nbuf);
     }
-    // Send raw bytes to the terminal. 
-    // @note Consider `printf`.
+    // See `send()`
     void sendf(const char *fmt, ...) {
       char buf[8192];
       va_list vl;

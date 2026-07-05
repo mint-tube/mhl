@@ -7,7 +7,7 @@
 namespace mlog {
   enum class Level { Debug, Info, Warning, Error, Fatal };
 
-  inline std::string path = "stdout"; // "stdout" and "stderr" will use colors
+  inline std::string path = "stdout"; // "stdout" and "stderr" will be colored
   inline std::string time_fmt = "%d-%m-%Y %H:%M:%S";
   inline Level level = Level::Warning;
   inline bool timestamps = true;

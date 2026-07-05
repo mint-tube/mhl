@@ -26,11 +26,11 @@ int main() {
       }
 
       ev = term.peek_event(30 * 1000);                                // poll for 30 seconds
-      if (ev.key == Key::ESC) break;
+      if (ev.key == Key::ESC || ev.key == Key::CTRL_C) break;         // Ctrl+C is NOT special.
       if (ev.key == Key::TAB) {
         term.capture_mouse(mouse_mode = !mouse_mode);
 
-        term.set_cell(0, y, 0, 0, U'🔶');                             // write to any cell
+        term.set_cell(0, y, 0, 0, U'🔶');                             // write to arbitrary cell
         uint32_t color = supports_rgb() ? rgb(248, 157, 20) : RED;  // rgb!!!
         term.printf(3, y++, color | BOLD, 0, "Mouse input is %s", mouse_mode ? "on" : "off");
       }
