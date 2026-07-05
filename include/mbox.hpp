@@ -1542,14 +1542,14 @@ namespace mbox {
   // unchanged.
   //
   // @return The length of codepoint (1-6) or a negative number of bytes processed
-  int utf8_to_utf32(char32_t *out, const char *c) {
-    if (*c == '\0') return 0;
+  int utf8_to_utf32(char32_t *out, std::string_view c) {
+    if (c.empty()) return 0;
 
     uint8_t len = static_cast<size_t>(utf8_length[(uint8_t)c[0]]);
     uint8_t mask = utf8_mask[len - 1];
     char32_t result = c[0] & mask;
     uint8_t i;
-    for (i = 1; i < len && c[i] != '\0'; ++i) {
+    for (i = 1; i < len && i < c.size(); ++i) {
       result <<= 6;
       result |= c[i] & 0x3f;
     }
@@ -2069,11 +2069,12 @@ namespace mbox {
       }
 
       // UTF-8?
-      if (in.buf.size() >= utf8_length[(uint8_t)first_key]) {
+      const size_t &len = utf8_length[(uint8_t)first_key];
+      if (in.buf.size() >= len) {
         event->type = EventType::KEY;
-        utf8_to_utf32(&event->ch, in.buf.data());
+        utf8_to_utf32(&event->ch, std::string_view(in.buf.data(), len));
         event->key = (Key)0;
-        in.shift(utf8_length[(uint8_t)first_key]);
+        in.shift(len);
         return true;
       }
 
@@ -2327,11 +2328,11 @@ namespace mbox {
     // Newlines will move cursor to (x; y++).
     //
     // @note Consider `printf` and `set_cell`.
-    void print(uint16_t x, uint16_t y, uint32_t fg, uint32_t bg, const char *str) {
+    void print(uint16_t x, uint16_t y, uint32_t fg, uint32_t bg, std::string_view str) {
       if (!back.in_bounds(x, y)) return;
 
       uint16_t orig_x = x;
-      while (*str) {
+      while (!str.empty()) {
         char32_t ch;
         int rv = utf8_to_utf32(&ch, str);
         size_t w;
@@ -2354,15 +2355,15 @@ namespace mbox {
             set_cell(x, y, fg, bg, ch);
           x += w;
         }
-        str += std::abs(rv);
+        str.remove_prefix(abs(rv));
       }
     }
     // See `print()`
-    void printf(uint16_t x, uint16_t y, uint32_t fg, uint32_t bg, const char *fmt, ...) {
+    void printf(uint16_t x, uint16_t y, uint32_t fg, uint32_t bg, std::string_view fmt, ...) {
       char buf[16384];
       va_list vl;
       va_start(vl, fmt);
-      int rv = vsnprintf(buf, sizeof(buf), fmt, vl);
+      int rv = vsnprintf(buf, sizeof(buf), fmt.data(), vl);
       va_end(vl);
       if (rv < 0) return;
       print(x, y, fg, bg, buf);
@@ -2373,18 +2374,7 @@ namespace mbox {
     // and if you think you do, you probably don't.
     //
     // @note Consider `print`.
-    void send(const char *buf, size_t nbuf) {
-      out.nputs(buf, nbuf);
-    }
-    // See `send()`
-    void sendf(const char *fmt, ...) {
-      char buf[8192];
-      va_list vl;
-      va_start(vl, fmt);
-      int rv = vsnprintf(buf, sizeof(buf), fmt, vl);
-      va_end(vl);
-      if (rv > 0) send(buf, static_cast<size_t>(rv));
-    }
+    void send(const char *buf, size_t nbuf) { out.nputs(buf, nbuf); }
 
     // Do not use this.
     static void handle_resize(int sig) {
@@ -2394,8 +2384,8 @@ namespace mbox {
     // Get a reference to the singleton.
     // @throws `std::logic_error` - instance not created yet.
     static term &instance() {
-      if (!self_ptr) throw std::logic_error("term instance not created yet");
-      return *self_ptr;
+      if (self_ptr) return *self_ptr;;
+      throw std::logic_error("term instance not created yet");
     }
   };
   term *term::self_ptr = nullptr;
