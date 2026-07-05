@@ -78,41 +78,23 @@ namespace mcfg {
       merge_block(); // store the last block
     }
 
-    // Return the value of a given field.
-    // If no such section or field exists - return an empty string.
-    const std::string get(std::string_view section_name, std::string_view field_name) const {
-      auto section = std::find_if(sections.begin(), sections.end(),
-        [&](const auto &p) { return p.first == section_name; });
-      if (section == sections.end()) return "";
+    // Return a read-write reference to the specified field.
+    //
+    // Create an empty section/field if it doesn't exist.
+    // @note Use this where you'd use a `[]` operator with a normal array.
+    std::string &operator()(std::string section_name, std::string field_name) {
+      section_name = strip(section_name); field_name = strip(field_name);
 
-      const auto &fields = section->second;
+      auto section = std::find_if(sections.begin(), sections.end(),
+        [&](const auto &p) { return p.first == section; });
+      if (section == sections.end()) sections.push_back({section_name, {}});
+
+      auto &fields = sections.back().second;
       auto field = std::find_if(fields.begin(), fields.end(),
         [&](const auto &fp) { return fp.first == field_name; });
-      if (field == fields.end()) return "";
+      if (field == fields.end()) fields.push_back({field_name, ""});
 
       return field->second;
-    }
-
-    // Update the value of a given field.
-    // If no such section or field exists - create one.
-    void set(std::string section_name, std::string field_name, std::string value) {
-      section_name = strip(section_name);
-      field_name = strip(field_name);
-      value = strip(value);
-
-      auto section = std::find_if(sections.begin(), sections.end(),
-        [&](const auto &p) { return p.first == section_name; });
-      if (section == sections.end()) {
-        sections.emplace_back(section_name, std::vector<std::pair<std::string, std::string>>{{field_name, value}});
-        return;
-      }
-
-      auto &fields = section->second;
-      auto field = std::find_if(fields.begin(), fields.end(),
-        [&](const auto &fp) { return fp.first == field_name; });
-
-      if (field == fields.end()) fields.emplace_back(field_name, value);
-      else field->second = value;
     }
 
     // Get a list of sections in the config (including the global "" section if it has any fields)
