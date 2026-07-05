@@ -125,6 +125,7 @@ namespace mbox {
   }
 
   enum class EventType { NONE = 0, KEY = 1, RESIZE = 2, MOUSE = 3 };
+  enum class MouseMode { OFF = 0, NO_DRAG = 1, DRAG = 2 };
 
   enum class Mod { NONE = 0, ALT = 1, CTRL = 2, SHIFT = 4, MOTION = 8 };
   constexpr Mod operator|(Mod left, Mod right) {
@@ -182,6 +183,8 @@ namespace mbox {
     namespace HardCap {
       std::string_view ENTER_MOUSE = "\x1b[?1000h\x1b[?1015h\x1b[?1006h";
       std::string_view EXIT_MOUSE = "\x1b[?1000l\x1b[?1015l\x1b[?1006l";
+      std::string_view ENABLE_DRAG = "\x1b[?1002h";
+      std::string_view DISABLE_DRAG = "\x1b[?1002l";
     }
 
     const int16_t terminfo_cap_indexes[] = {
@@ -1446,7 +1449,7 @@ namespace mbox {
     }
 
     void flush(int fd) {
-      if (write(fd, buf.data(), buf.size()) == -1)
+      if (write(fd, buf.data(), buf.size()) < 0)
         throw std::runtime_error("`write` failed - can't flush the bytebuf");
       buf.clear();
     }
@@ -1742,8 +1745,6 @@ namespace mbox {
     }
 
     void update_term_size() {
-      if (ttyfd < 0) throw std::runtime_error("TTY not connected. Uninitialized?");
-
       // try ioctl TIOCGWINSZ
       winsize sz{};
       if (ioctl(ttyfd, TIOCGWINSZ, &sz) == 0) {
@@ -2296,18 +2297,26 @@ namespace mbox {
       out.flush(ttyfd);
     }
 
-    // Enable or disable mouse events
+    // Enable or disable mouse events 
+    // If dragging is enabled, click events will repeat
+    // when mouse is dragged with a button held down
     // @note See `mouse_drag`
-    void capture_mouse(bool enable) {
-      if (enable && !mouse_mode) {
-        mouse_mode = true;
-        out.put(HardCap::ENTER_MOUSE);
-        out.flush(ttyfd);
-      } else if (!enable && mouse_mode) {
-        mouse_mode = false;
-        out.put(HardCap::EXIT_MOUSE);
-        out.flush(ttyfd);
+    void set_mouse_mode(MouseMode mode) {
+      std::string_view cap;
+      switch (mode) {
+        case MouseMode::OFF:
+          cap = "\x1b[?1000l\x1b[?1006l";
+          break;
+        case MouseMode::NO_DRAG:
+          cap = "\x1b[?1002l\x1b[?1000h\x1b[?1006h";
+          break;
+        case MouseMode::DRAG:
+          cap = "\x1b[?1002h\x1b[?1000h\x1b[?1006h";
+          break;
       }
+
+      [[maybe_unused]] int _;
+      _ = write(ttyfd, cap.data(), cap.size());
     }
 
     // Does exactly what you think. Strings are interpreted as UTF-8.
