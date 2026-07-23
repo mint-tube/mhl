@@ -127,6 +127,8 @@ namespace mbox {
   enum class EventType { NONE = 0, KEY = 1, RESIZE = 2, MOUSE = 3 };
   enum class MouseMode { OFF = 0, NO_DRAG = 1, DRAG = 2 };
 
+  // Ctrl+Shift and Alt+Shift are not supported by terminal
+  // and will be reduced to Ctrl and Alt respectively.
   enum class Mod { NONE = 0, ALT = 1, CTRL = 2, SHIFT = 4, MOTION = 8 };
   constexpr Mod operator|(Mod left, Mod right) {
     return static_cast<Mod>(static_cast<uint8_t>(left) | static_cast<uint8_t>(right));
@@ -1595,7 +1597,6 @@ namespace mbox {
     uint32_t default_bg = style::NONE;
     uint16_t last_fg = ~default_fg;
     uint16_t last_bg = ~default_bg;
-    bool mouse_mode = false;
     std::string terminfo;
     std::array<std::string_view, CAPSIZE> caps;
     cap_trie cap_trie_root;

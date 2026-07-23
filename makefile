@@ -1,4 +1,4 @@
-CXX ?= clang++
+CXX = clangg++
 CXXFLAGS = -std=c++17 -O1 -DDEBUG -Wall -Wextra -Wpedantic -Werror -fsanitize=address
 
 SRCS = $(wildcard examples/*.cpp)
