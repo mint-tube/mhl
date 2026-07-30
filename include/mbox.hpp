@@ -127,13 +127,13 @@ namespace mbox {
   enum class EventType { NONE = 0, KEY = 1, RESIZE = 2, MOUSE = 3 };
   enum class MouseMode { OFF = 0, NO_DRAG = 1, DRAG = 2 };
 
-  // Ctrl+Shift and Alt+Shift are not supported by terminal
+  // Ctrl+Shift and Alt+Shift are not supported by terminals
   // and will be reduced to Ctrl and Alt respectively.
   enum class Mod { NONE = 0, ALT = 1, CTRL = 2, SHIFT = 4, MOTION = 8 };
-  constexpr Mod operator|(Mod left, Mod right) {
+  constexpr Mod operator|(Mod left, Mod right) noexcept {
     return static_cast<Mod>(static_cast<uint8_t>(left) | static_cast<uint8_t>(right));
   }
-  constexpr Mod operator&(Mod left, Mod right) {
+  constexpr Mod operator&(Mod left, Mod right) noexcept {
     return static_cast<Mod>(static_cast<uint8_t>(left) & static_cast<uint8_t>(right));
   }
 
@@ -1375,7 +1375,7 @@ namespace mbox {
   }
 
   // Check whether the current terminal supports RGB colors
-  inline bool supports_rgb() {
+  inline bool supports_rgb() noexcept {
     const char *term = getenv("TERM");
     if (term && strstr(term, "256color")) return true; // almost certainly also supports TrueColor
     const char *colorterm = getenv("COLORTERM");
@@ -1394,13 +1394,13 @@ namespace mbox {
     uint32_t bg;    // background attributes
     char32_t ch; // a Unicode codepoint
 
-    cell(uint32_t fg, uint32_t bg, char32_t ch) : fg(fg), bg(bg), ch(ch) {}
-    cell() : fg(0), bg(0), ch(' ') {}
+    constexpr cell(uint32_t fg, uint32_t bg, char32_t ch) : fg(fg), bg(bg), ch(ch) {}
+    constexpr cell() : fg(0), bg(0), ch(' ') {}
 
-    bool operator==(const cell &right) const {
+    constexpr bool operator==(const cell &right) const noexcept {
       return !(this->ch != right.ch || this->fg != right.fg || this->bg != right.bg);
     }
-    bool operator!=(const cell &right) const {
+    constexpr bool operator!=(const cell &right) const noexcept {
       return (this->ch != right.ch || this->fg != right.fg || this->bg != right.bg);
     }
   };
@@ -1416,10 +1416,10 @@ namespace mbox {
     cell &at(uint16_t x, uint16_t y) {
       return this->cells[y * width + x];
     }
-    bool in_bounds(uint16_t x, uint16_t y) {
+    bool in_bounds(uint16_t x, uint16_t y) const noexcept {
       return !(x >= this->width || y >= this->height);
     }
-    void clear(uint32_t fg, uint32_t bg) {
+    void clear(uint32_t fg, uint32_t bg) noexcept {
       for (cell &c : cells) c = cell(fg, bg, U' ');
     }
     // Save as much content as possible
@@ -1445,7 +1445,7 @@ namespace mbox {
       for (size_t i = 0; i < n; i++) buf.push_back(str[i]);
     }
     void put(unsigned num) { put(std::to_string(num)); }
-    void shift(size_t n) {
+    void shift(size_t n) noexcept {
       if (n >= buf.size()) buf.clear();
       else buf.erase(buf.begin(), buf.begin() + n);
     }
@@ -1484,7 +1484,7 @@ namespace mbox {
   };
 
   // Check if a Unicode codepoint is printable
-  bool utf32_printable(char32_t ch) {
+  bool utf32_printable(char32_t ch) noexcept {
     if ((ch >= 0x20 && ch <= 0x7e) || (ch >= 0xa0 && ch <= 0xff)) {
       return true;
     } else if (ch <= 0xff) return false;
@@ -1504,7 +1504,7 @@ namespace mbox {
     return false; // Invalid codepoint
   }
   // Get the width of a Unicode codepoint
-  size_t utf32_width(char32_t ch) {
+  size_t utf32_width(char32_t ch) noexcept {
     if ((ch >= 0x20 && ch <= 0x7e) || (ch >= 0xa0 && ch <= 0xff)) {
       return 1;
     } else if (ch <= 0xff) {
@@ -1534,7 +1534,7 @@ namespace mbox {
   // unchanged.
   //
   // @return The length of codepoint (1-6) or a negative number of bytes processed
-  int utf8_to_utf32(char32_t *out, std::string_view c) {
+  int utf8_to_utf32(char32_t *out, std::string_view c) noexcept {
     if (c.empty()) return 0;
 
     uint8_t len = static_cast<size_t>(utf8_length[(uint8_t)c[0]]);
@@ -1553,7 +1553,7 @@ namespace mbox {
   }
   // Convert UTF-32 codepoint `c` to UTF-8 null-terminated byte sequence.
   // @return The length of the codepoint (1-6).
-  size_t utf32_to_utf8(char *out, char32_t c) {
+  size_t utf32_to_utf8(char *out, char32_t c) noexcept {
     uint8_t first;
     size_t len;
     if (c < 0x80) {
@@ -1604,7 +1604,7 @@ namespace mbox {
     cellbuf back{0, 0}, front{0, 0};
     termios orig_tios = {};
 
-    void on_resize(int sig) {
+    void on_resize(int sig) noexcept {
       int saved_errno = errno;
       sig = write(resize_pipefd[1], &sig, sizeof(sig));
       errno = saved_errno;
@@ -2159,27 +2159,29 @@ namespace mbox {
     }
 
     // Return the width of the terminal.
-    uint16_t get_width() { return width; }
+    uint16_t get_width() const noexcept { return width; }
     // Return the height of the terminal.
-    uint16_t get_height() { return height; }
+    uint16_t get_height() const noexcept { return height; }
 
     // Clear the back buffer using default attributes or ones set with `set_default_attrs`.
-    void clear() { back.clear(default_fg, default_bg); }
+    void clear() noexcept { back.clear(default_fg, default_bg); }
     // Set the default style of cells for `clear()` and `style::DEFAULT`
-    void set_default_style(uint32_t fg, uint32_t bg) {
+    void set_default_style(uint32_t fg, uint32_t bg) noexcept {
       default_fg = fg;
       default_bg = bg;
     }
 
     // Set cell contents in the back buffer at the specified position. 
     // @note Consider `printf`.
-    void set_cell(uint16_t x, uint16_t y, cell c) { back.at(x, y) = c; }
+    void set_cell(uint16_t x, uint16_t y, cell c) noexcept { back.at(x, y) = c; }
     // Set cell contents in the back buffer at the specified position. 
     // @note Consider `printf`.
-    void set_cell(uint16_t x, uint16_t y, uint32_t fg, uint32_t bg, char32_t ch) { back.at(x, y) = cell(fg, bg, ch); }
+    void set_cell(uint16_t x, uint16_t y, uint32_t fg, uint32_t bg, char32_t ch) noexcept {
+      back.at(x, y) = cell(fg, bg, ch);
+    }
     // Get cell contents in the back buffer at the specified position. 
     // @note Returns the last *set* character, not the *visible* one.
-    cell get_cell(uint16_t x, uint16_t y) { return back.at(x, y); }
+    const cell &get_cell(uint16_t x, uint16_t y) noexcept { return back.at(x, y); }
 
     // Wait for an event up to `timeout_ms` milliseconds.
     // If no event occured, event.type == EventType::NONE.
@@ -2326,7 +2328,7 @@ namespace mbox {
     // Newlines will move cursor to (x; y++).
     //
     // @note Consider `printf` and `set_cell`.
-    void print(uint16_t x, uint16_t y, uint32_t fg, uint32_t bg, std::string_view str) {
+    void print(uint16_t x, uint16_t y, uint32_t fg, uint32_t bg, std::string_view str) noexcept {
       if (!back.in_bounds(x, y)) return;
 
       uint16_t orig_x = x;
@@ -2357,7 +2359,7 @@ namespace mbox {
       }
     }
     // See `print()`
-    void printf(uint16_t x, uint16_t y, uint32_t fg, uint32_t bg, std::string_view fmt, ...) {
+    void printf(uint16_t x, uint16_t y, uint32_t fg, uint32_t bg, std::string_view fmt, ...) noexcept {
       char buf[16384];
       va_list vl;
       va_start(vl, fmt);
@@ -2375,7 +2377,7 @@ namespace mbox {
     void send(const char *buf, size_t nbuf) { out.put(buf, nbuf); }
 
     // Do not use this.
-    static void handle_resize(int sig) {
+    static void handle_resize(int sig) noexcept {
       self_ptr->on_resize(sig);
     }
 
@@ -2390,7 +2392,7 @@ namespace mbox {
 
   // Ring the terminal bell. Might be disabled.
   // @note `putchar(7)` will not work in the raw mode.
-  void beep() { [[maybe_unused]] int _; _ = system("tput bel"); }
+  void beep() noexcept { [[maybe_unused]] int _; _ = system("tput bel"); }
 }
 
 /*
