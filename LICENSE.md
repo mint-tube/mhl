@@ -1,4 +1,4 @@
-### Copyright (c) 2026 mint_tube <mmooyrs@gmail.com>
+### Copyright (c) 2026 Vsevolod Khoroshavtcev <mmooyrs@gmail.com>
 
 Redistribution and use in source and binary forms, with or without modification, are
 permitted in any medium without royalty provided that the following conditions is met:

@@ -182,7 +182,7 @@ namespace mcfg {
 }
 
 /*
-  Copyright (c) 2026 mint_tube <mmooyrs@gmail.com>
+  Copyright (c) 2026 Vsevolod Khoroshavtcev <mmooyrs@gmail.com>
 
   Redistribution and use of this file, with or without modification,
   are permitted in any medium without royalty provided this notice is preserved.
