@@ -182,13 +182,6 @@ namespace mbox {
     };
     constexpr size_t CAPSIZE = 38; // pun intended
 
-    namespace HardCap {
-      std::string_view ENTER_MOUSE = "\x1b[?1000h\x1b[?1015h\x1b[?1006h";
-      std::string_view EXIT_MOUSE = "\x1b[?1000l\x1b[?1015l\x1b[?1006l";
-      std::string_view ENABLE_DRAG = "\x1b[?1002h";
-      std::string_view DISABLE_DRAG = "\x1b[?1002l";
-    }
-
     const int16_t terminfo_cap_indexes[] = {
       66,  // kf1 (Cap::F1)
       68,  // kf2 (Cap::F2)
@@ -2146,7 +2139,7 @@ namespace mbox {
       out.put(caps[Cap::CLEAR_SCREEN]);
       out.put(caps[Cap::EXIT_CA]);
       out.put(caps[Cap::EXIT_KEYPAD]);
-      out.put(HardCap::EXIT_MOUSE);
+      out.put("\x1b[?1000l"); // Exit mouse mode
       out.flush(ttyfd);
 
       tcsetattr(ttyfd, TCSAFLUSH, &orig_tios);
@@ -2308,18 +2301,16 @@ namespace mbox {
       std::string_view cap;
       switch (mode) {
         case MouseMode::OFF:
-          cap = "\x1b[?1000l\x1b[?1006l";
+          cap = "\x1b[?1000l";
           break;
         case MouseMode::NO_DRAG:
-          cap = "\x1b[?1002l\x1b[?1000h\x1b[?1006h";
+          cap = "\x1b[?1000h\x1b[?1015h\x1b[?1006h";
           break;
         case MouseMode::DRAG:
-          cap = "\x1b[?1002h\x1b[?1000h\x1b[?1006h";
+          cap = "\x1b[?1000h\x1b[?1002h\x1b[?1015h\x1b[?1006h";
           break;
       }
-
-      [[maybe_unused]] int _;
-      _ = write(ttyfd, cap.data(), cap.size());
+      [[maybe_unused]] int _ = write(ttyfd, cap.data(), cap.size());
     }
 
     // Does exactly what you think. Strings are interpreted as UTF-8.
