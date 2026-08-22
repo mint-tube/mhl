@@ -127,8 +127,7 @@ namespace mbox {
   enum class EventType { NONE = 0, KEY = 1, RESIZE = 2, MOUSE = 3 };
   enum class MouseMode { OFF = 0, NO_DRAG = 1, DRAG = 2 };
 
-  // Ctrl+Shift and Alt+Shift are not supported by terminals
-  // and will be reduced to Ctrl and Alt respectively.
+  // Ctrl+Shift is not supported by terminals and will be reduced to just Ctrl.
   enum class Mod { NONE = 0, ALT = 1, CTRL = 2, SHIFT = 4, MOTION = 8 };
   constexpr Mod operator|(Mod left, Mod right) noexcept {
     return static_cast<Mod>(static_cast<uint8_t>(left) | static_cast<uint8_t>(right));
