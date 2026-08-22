@@ -2377,11 +2377,8 @@ namespace mbox {
       throw std::logic_error("term instance not created yet");
     }
   };
-  term *term::self_ptr = nullptr;
 
-  // Ring the terminal bell. Might be disabled.
-  // @note `putchar(7)` will not work in the raw mode.
-  void beep() noexcept { [[maybe_unused]] int _; _ = system("tput bel"); }
+  term *term::self_ptr = nullptr;
 }
 
 /*
