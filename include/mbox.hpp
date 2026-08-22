@@ -2296,18 +2296,17 @@ namespace mbox {
     // Enable or disable mouse events 
     // If dragging is enabled, click events will repeat
     // when mouse is dragged with a button held down
-    // @note See `mouse_drag`
     void set_mouse_mode(MouseMode mode) {
       std::string_view cap;
       switch (mode) {
         case MouseMode::OFF:
-          cap = "\x1b[?1000l";
+          cap = "\x1b[?1002l\x1b[?1000l";
           break;
         case MouseMode::NO_DRAG:
-          cap = "\x1b[?1000h\x1b[?1015h\x1b[?1006h";
+          cap = "\x1b[?1002l\x1b[?1000h\x1b[?1015h\x1b[?1006h";
           break;
         case MouseMode::DRAG:
-          cap = "\x1b[?1000h\x1b[?1002h\x1b[?1015h\x1b[?1006h";
+          cap = "\x1b[?1002h\x1b[?1000h\x1b[?1015h\x1b[?1006h";
           break;
       }
       [[maybe_unused]] int _ = write(ttyfd, cap.data(), cap.size());
